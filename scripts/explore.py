@@ -1,6 +1,25 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import pylab as pl
+
+import matplotlib
+if __name__=='__main__':
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib as mpl
+import matplotlib.patheffects as PathEffects
+import matplotlib.gridspec as gridspec
+import glob
+from matplotlib import rc
+rc('font',**{'family':'serif','serif':['Times','Palatino']})
+rc('text', usetex=True)
+mpl.rcParams['xtick.major.size']=8
+mpl.rcParams['ytick.major.size']=8
+mpl.rcParams['xtick.labelsize']=18
+mpl.rcParams['ytick.labelsize']=18
+
+
 #from __future__ import print
 import healpy as hp
 import os
@@ -72,29 +91,46 @@ def plot_hists(nus=[143,353],
                nside=2048,
                fwhm=0.0,
               bins=100,normed=True,
-              atol=1e-6):
+              atol=1e-6, ymin=0.01, ymax=None,
+              xmin=-0.001, xmax=0.005):
 
     map1_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[0])
     map2_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[1])
    
-    map1 = prepare_map( map1_name, field=0,
+    map1full = prepare_map( map1_name, field=0,
                         nside_out=nside, fwhm=fwhm )
-    map2 = prepare_map( map2_name, field=0,
+    map2full = prepare_map( map2_name, field=0,
                         nside_out=nside, fwhm=fwhm )
-        
-    plt.figure()
-    y,x = pl.histogram(map1[np.where(np.negative(np.isclose(map1,0.,atol=atol)))],
-                       bins=bins,normed=normed)
-    bin = (x[:-1] + x[1:]) / 2.
-    plt.semilogy(bin, y, lw=3, label='{}'.format(nus[0]))
 
-    y,x = pl.histogram(map2[np.where(np.negative(np.isclose(map2,0.,atol=atol)))],
+    map1 = map1full #- map1full.mean()
+    map2 = map2full #- map2full.mean()
+
+    y1,x1 = pl.histogram(map1[np.where(np.negative(np.isclose(map1,0.,atol=atol)))],
                        bins=bins,normed=normed)
-    bin = (x[:-1] + x[1:]) / 2.
-    plt.semilogy(bin, y, lw=3, label='{}'.format(nus[1]))
+    bin1 = (x1[:-1] + x1[1:]) / 2.
+
+    y2,x2 = pl.histogram(map2[np.where(np.negative(np.isclose(map2,0.,atol=atol)))],
+                       bins=bins,normed=normed)
+    bin2 = (x2[:-1] + x2[1:]) / 2.
         
 
-    plt.legend()
+    fig = plt.figure()
+    ax = plt.gca()
+    
+    ax.semilogy(bin1, y1, lw=3, label='{} GHz'.format(nus[0]),color='red')
+    ax.semilogy(bin2, y2, lw=3, label='{} GHz'.format(nus[1]),color='gray')
+    ax.set_xlim(xmin=xmin,xmax=xmax)
+    ax.set_ylim(ymin=ymin, ymax=ymax)
+
+    #ax.set_yscale('log')
+    
+    ax.set_xlabel('$\mu K$', fontsize=20)
+    ax.set_yticks([])
+    
+    plt.draw()
+    plt.legend(frameon=False, fontsize=20)
+
+    plt.savefig('pdfs_{}GHz_{}GHz_fwhm{:.3}rad.pdf'.format(nus[0],nus[1],fwhm))
 
 def correlation2pt(map1, map2=None, npoints=100):
 
@@ -173,7 +209,7 @@ def calc_TEB(Imap_name='HFI_SkyMap_353_2048_R2.02_full.fits',
                 filename += '_{}.npy'.format(Pmap_name[-5])
             else:
                 filename += '.npy'
-        print 'looking for {} ...'.format(filename)
+    print 'looking for {} ...'.format(filename)
     if os.path.exists(filename) and not lmaps_only:
         bispectrum = np.load(filename)
         return bispectrum
@@ -206,6 +242,7 @@ def calc_TEB(Imap_name='HFI_SkyMap_353_2048_R2.02_full.fits',
 
     #return Ylm, Tlm, ls, ms
     print 'calculating Tl,El,Bl ...'
+    
     Tl = sum_over_m(Tlm, Ylm, ls,
                         lmax=lmax, lmin=lmin, mapsize=mapsize)
     El = sum_over_m(Elm, Ylm, ls,
@@ -254,7 +291,10 @@ def calc_bispectrum(Tl, El, Bl, hs,
                 for m in np.arange(mapsize):
                     result[l1,l2,l3] += Tl[l1,m] * El[l2,m] * Bl[l3,m]
 
-                result[l1,l2,l3] *= ( pixelsize / hs[l1,l2,l3]**2 )
+                if hs[l1,l2,l3] == 0.:
+                     result[l1,l2,l3] = 0.
+                else:
+                    result[l1,l2,l3] *= ( pixelsize / hs[l1,l2,l3]**2 )
                 
     return result
                     
@@ -294,7 +334,7 @@ def calc_Ylm(mapa, ls, ms):
 
         i=0
         for l,m in zip(ls,ms):
-            print 'calculating #{}/{}...'.format(i+1,numls)
+            print 'calculating Ylm #{}/{}...'.format(i+1,numls)
             i+=1
             ylm.append(sph_harm(m, l, theta, phi))
 
@@ -372,7 +412,7 @@ def calc_hs(Fks, lmin=0, lmax=100):
 
 
 
-def plot_bispectrum(b,slices=None,title=None):
+def plot_bispectrum(b,slices=None,title=None,filename=None):
 
     y = np.log10( np.abs(b) )
     #y [ b==0. ] = 0.
@@ -385,10 +425,15 @@ def plot_bispectrum(b,slices=None,title=None):
     
     if slices is None:
         plot_3D_bispectrum(y, title=title)
+        if filename is not None:
+            plt.savefig(filename)
+
     else:
         slices = np.atleast_1d(slices)
         for s in slices:
             plot_slice_bispectrum(y, s=s, title=title)
+            if filename is not None:
+                plt.savefig(filename)
 
 def plot_slice_bispectrum(y, s=None, title='',
                           colormap='coolwarm'):
@@ -399,9 +444,31 @@ def plot_slice_bispectrum(y, s=None, title='',
     if title is not None:
         title += ' (slice ind={})'.format(s)
     else:
-        title = '(slice ind={})'.format(s)
+        title = '$\ell_1$={}'.format(s)
     pl.title(title, fontsize=20)
 
     pl.imshow(y[s], cmap=colormap)
     pl.colorbar()
+
+def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
+               side=None, returntable=False):
+    ar = np.load(filename)
+    x = np.zeros(ar.shape)
+    y = np.zeros(ar.shape)
+    z = np.zeros(ar.shape)
+    if side is None:
+        side = ar.shape[0]
+    fout = open(filename[:-3] + 'dat', 'w')
+    
+    for l1 in np.arange(side):
+        for l2 in np.arange(side):
+            for l3 in np.arange(side):
+                x[l1,l2,l3] = l1
+                y[l1,l2,l3] = l2
+                z[l1,l2,l3] = l3
+                fout.write('{} {} {} {}\n'.format(l1,l2,l3,ar[l1,l2,l3]))
+    fout.close()
+
+    if returntable:
+        return x, y, z, ar
     

@@ -1,0 +1,104 @@
+\documentclass[a4paper, traditabstract,longauth]{aa} 
+\usepackage{graphicx,amsmath}
+\usepackage{epsf}
+\usepackage{ifthen}
+\usepackage[table,usenames,dvipsnames]{xcolor}
+\usepackage{fixltx2e}
+
+\usepackage{color}
+\usepackage{epsfig}
+\usepackage[breaklinks, colorlinks, citecolor=blue]{hyperref} 
+\usepackage[nonamebreak]{natbib}
+
+\usepackage[varg]{txfonts}
+
+% These next two lines added to deal with a 'No room for more \dimen' error
+
+\usepackage{etex}
+\reserveinserts{28}
+
+\pdfoutput=1
+\pdfmapfile{+txfonts.map}
+
+\bibpunct{(}{)}{;}{a}{}{,} 
+
+\input macros
+
+
+\begin{document}
+%
+\title{Non-Gaussian foreground statistics as a testing tool for future B-mode searches}
+
+\author{Vera Gluscevic, Marko Simonovic, David Spergel}
+
+%\date{Received xxxx, Accepted xxxxx}
+
+%%%%%%%%%%%%%%% 
+
+%\input{abstract}
+\keywords{cosmology: cosmic background radiation -- cosmology: observations -- cosmology: theory -- cosmology: early Universe -- cosmology: inflation -- methods: data analysis}
+
+\authorrunning{Gluscevic et al}
+\titlerunning{NG foreground statistics}
+
+\maketitle
+
+%%%%%%%%%%%%%%% 
+\section {Introduction}
+\label{intro}
+
+\input{intro.tex}
+
+%%%%%%%%%%%%%%% 
+\section{Dust bispectrum template}
+\label{sec:template}
+
+\input{template.tex}
+
+%%%%%%%%%%%%%%% 
+\section{Statistical estimation of dust contamination}
+\label{sec:contamination}
+
+\input{contamination.tex}
+
+%%%%%%%%%%%%%%% 
+\section{Fisher analysis results}
+\label{sec:results}
+
+\input{results.tex}
+
+%%%%%%%%%%%%%%% 
+\section{Planck data analysis: proof of concept}
+\label{sec:proof}
+
+\input{proof.tex}
+
+
+%%%%%%%%%%%%%%% 
+\section{Conclusions}
+\label{sec:concl}
+
+\input{conclusions.tex}
+
+
+%%%%%%%%%%%%%%% acknowledgements %%%%%%%%%%%%%%%
+
+%\input{acknowledgements.tex}
+
+%%%%%%%%%%%%%%% References %%%%%%%%%%%%%%%
+%\bibliographystyle{aa_arxiv}
+%\bibliography{NG_fg_bib}
+
+%%%%%%%%%%%%%%%  
+%%%%%%%%%%%%%%%
+\appendix
+
+%\input{AppendixA}
+
+
+\raggedright
+\end{document}
+
+
+
+
