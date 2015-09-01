@@ -38,8 +38,13 @@ def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
                 nside_out=16,
                 rewrite_map=False):
 
-    
-    newname = mapname[:-5] + '_new_fwhm_{:.3f}rad_nside_{}.fits'.format(fwhm, nside_out)
+    if maskname == 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits':
+        masktype = 'planck2048apo'
+    elif maskname == 'wmap_temperature_kq85_analysis_mask_r10_9yr_v5.fits':
+        masktype = 'wmap85'
+    else:
+        masktype = ''
+    newname = mapname[:-5] + '_new_fwhm_{:.3f}rad_nside_{}_{}mask.fits'.format(fwhm, nside_out,masktype)
     if not os.path.exists(data_path + newname) or rewrite_map:
         print 'reading mask...'
         mask = hp.read_map(data_path + maskname)
@@ -88,22 +93,28 @@ def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
         
                  
 def plot_hists(nus=[143,353],
+               map1_name=None,
+               map2_name=None,
+               maskname='wmap_temperature_kq85_analysis_mask_r10_9yr_v5.fits',
                nside=2048,
                fwhm=0.0,
               bins=100,normed=True,
               atol=1e-6, ymin=0.01, ymax=None,
               xmin=-0.001, xmax=0.005):
 
-    map1_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[0])
-    map2_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[1])
+    if map1_name is None:
+        map1_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[0])
+    label1 = '{} GHz'.format(nus[0])
+    if map2_name is None:
+        map2_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nus[1])
+    label2 = '{} GHz'.format(nus[1])
    
-    map1full = prepare_map( map1_name, field=0,
+    map1 = prepare_map( map1_name, field=0,
+                        maskname=maskname,
                         nside_out=nside, fwhm=fwhm )
-    map2full = prepare_map( map2_name, field=0,
+    map2 = prepare_map( map2_name, field=0,
+                        maskname=maskname,
                         nside_out=nside, fwhm=fwhm )
-
-    map1 = map1full #- map1full.mean()
-    map2 = map2full #- map2full.mean()
 
     y1,x1 = pl.histogram(map1[np.where(np.negative(np.isclose(map1,0.,atol=atol)))],
                        bins=bins,normed=normed)
@@ -112,13 +123,14 @@ def plot_hists(nus=[143,353],
     y2,x2 = pl.histogram(map2[np.where(np.negative(np.isclose(map2,0.,atol=atol)))],
                        bins=bins,normed=normed)
     bin2 = (x2[:-1] + x2[1:]) / 2.
+    #return bin1,y1,bin2,y2
         
 
     fig = plt.figure()
     ax = plt.gca()
     
-    ax.semilogy(bin1, y1, lw=3, label='{} GHz'.format(nus[0]),color='red')
-    ax.semilogy(bin2, y2, lw=3, label='{} GHz'.format(nus[1]),color='gray')
+    ax.semilogy(bin1, y1, lw=3, label=label1,color='red')
+    ax.semilogy(bin2, y2, lw=3, label=label2,color='gray')
     ax.set_xlim(xmin=xmin,xmax=xmax)
     ax.set_ylim(ymin=ymin, ymax=ymax)
 
@@ -415,7 +427,7 @@ def calc_hs(Fks, lmin=0, lmax=100):
 def plot_bispectrum(b,slices=None,title=None,filename=None):
 
     y = np.log10( np.abs(b) )
-    #y [ b==0. ] = 0.
+    #y = b
   
     #ypositive = np.zeros(b.shape)
     #ynegative = np.zeros(b.shape)
@@ -471,4 +483,36 @@ def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
 
     if returntable:
         return x, y, z, ar
-    
+
+
+def simulate_noisemap(template_name='HFI_SkyMap_143_2048_R2.02_full.fits',
+                      nu=None,
+                      newname='noisesim.fits'):
+    if nu is not None:
+        template_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
+
+    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( data_path + template_name,
+                                                            field=(4,5,6,7,8,9) )
+    Npix = covII.shape[0]
+
+    Imap = create_I_noisemap(Npix, covII)
+    Qmap, Umap = create_QU_noisemap(Npix, covQQ, covUU, covQU)
+
+    hp.fitsfunc.write_map( data_path + newname,
+                           [Imap, Qmap, Umap])
+
+    return Imap, Qmap, Umap
+def create_I_noisemap(Npix, cov):
+
+    nmap = np.random.standard_normal(Npix) * np.sqrt(cov)
+
+    return nmap
+
+def create_QU_noisemap(Npix, covQQ, covUU, covQU):
+    r1 = np.random.standard_normal(Npix)
+    r2 = np.random.standard_normal(Npix)
+
+    nmapQ = r1 * np.sqrt(covQQ)
+    nmapU = r1 * covQU / np.sqrt(covQQ) + r2 * np.sqrt(covUU - covQU**2/covQQ)
+
+    return nmapQ, nmapU
