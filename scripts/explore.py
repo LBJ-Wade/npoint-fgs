@@ -32,59 +32,49 @@ from scipy.special import sph_harm
 data_path = '/Users/verag/Research/Repositories/npoint-fgs/data/'
 
 def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
-                maskname='HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
+                maskname='HFI_Mask_GalPlane_2048_R1.10.fits',
                 field = (0,1,2),
-                fwhm=0.06283185307179587,
-                nside_out=16,
-                rewrite_map=False):
+                fwhm=0.0,
+                nside_out=128,
+                rewrite_map=False,
+                masktype=None):
 
-    if maskname == 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits':
-        masktype = 'planck2048apo'
-    elif maskname == 'wmap_temperature_kq85_analysis_mask_r10_9yr_v5.fits':
-        masktype = 'wmap85'
-    else:
-        masktype = ''
-    newname = mapname[:-5] + '_new_fwhm_{:.3f}rad_nside_{}_{}mask.fits'.format(fwhm, nside_out,masktype)
+    newname = mapname[:-5] + '_fwhm_{:.3f}rad_nside_{}_mask_{}.fits'.format(fwhm, nside_out,masktype)
     if not os.path.exists(data_path + newname) or rewrite_map:
+        
         print 'reading mask...'
-        mask = hp.read_map(data_path + maskname)
+        mask = hp.read_map(data_path + maskname, field=2)
         masknside = hp.get_nside(mask)
+        
+        if masknside != nside_out:
+            print 'matching mask to map resolution...'
+            mask = hp.pixelfunc.ud_grade(mask, nside_out=nside_out)
+        print 'done'
+
+            
         print 'processing map...'
         Imap, Qmap, Umap = hp.read_map( data_path + mapname,
                                         hdu=1, field=(0,1,2) )
-        mapnside = hp.get_nside( Imap )
-        if mapnside != masknside:
-            mask = hp.pixelfunc.ud_grade(mask,
-                                         nside_out=mapnside)
-   
-        masked_Imap = Imap * mask
-        masked_Qmap = Qmap * mask
-        masked_Umap = Umap * mask
+        mapnside = hp.get_nside(Imap)
 
-        if np.isclose(fwhm, 0.):
-            smoothed_Imap = masked_Imap
-            smoothed_Qmap = masked_Qmap
-            smoothed_Umap = masked_Umap
-        else:
-            smoothed_Imap = hp.sphtfunc.smoothing( masked_Imap,fwhm=fwhm )
-            smoothed_Qmap = hp.sphtfunc.smoothing( masked_Qmap,fwhm=fwhm )
-            smoothed_Umap = hp.sphtfunc.smoothing( masked_Umap,fwhm=fwhm )
 
-        if mapnside == nside_out:
-            reduced_Imap = smoothed_Imap
-            reduced_Qmap = smoothed_Qmap
-            reduced_Umap = smoothed_Umap
-        else:
-            reduced_Imap = hp.pixelfunc.ud_grade( smoothed_Imap,
-                                                  nside_out=nside_out )
-            reduced_Qmap = hp.pixelfunc.ud_grade( smoothed_Qmap,
-                                                  nside_out=nside_out )
-            reduced_Umap = hp.pixelfunc.ud_grade( smoothed_Umap,
-                                                  nside_out=nside_out )
-        reduced_map = [reduced_Imap, reduced_Qmap, reduced_Umap]
+        if not np.isclose(fwhm, 0.):
+            Imap = hp.sphtfunc.smoothing( Imap,fwhm=fwhm )
+            Qmap = hp.sphtfunc.smoothing( Qmap,fwhm=fwhm )
+            Umap = hp.sphtfunc.smoothing( Umap,fwhm=fwhm )
+
+        if mapnside != nside_out:
+            Imap = hp.pixelfunc.ud_grade( Imap,nside_out=nside_out )
+            Qmap = hp.pixelfunc.ud_grade( Qmap,nside_out=nside_out )
+            Umap = hp.pixelfunc.ud_grade( Umap,nside_out=nside_out )
+
+        Imap *= mask
+        Qmap *= mask
+        Umap *= mask
         
-        hp.fitsfunc.write_map( data_path + newname,
-                               reduced_map )
+        hp.fitsfunc.write_map( data_path + newname, [Imap, Qmap, Umap])
+
+        print 'done'
 
     print 'reading map...'
     maps = hp.read_map( data_path + newname,
@@ -355,16 +345,6 @@ def calc_Ylm(mapa, ls, ms):
     return ylm
 
 
-#@jit
-#def compute_3lm(Tlm,Elm,Blm,length):
-#    cube = np.zeros((length,length,length),dtype=complex)
-#    for i,tlm in enumerate(Tlm):
-#        for j,elm in enumerate(Elm):
-#            for k,blm in enumerate(Blm):
-#                cube[i,j,k] = tlm * elm * blm
-#    return cube
-    
-
 
 def get_Fk(J, filename='Fks_1000.txt'):
     Ftable = np.loadtxt(filename)
@@ -421,8 +401,6 @@ def calc_hs(Fks, lmin=0, lmax=100):
                 res[l1,l2,l3] = w3j000(l1, l2, l3, Fks) * ((2.*l1+1)*(2.*l2+1)*(2.*l3+1)/(4.*np.pi))**0.5
 
     return res
-
-
 
 def plot_bispectrum(b,slices=None,title=None,filename=None):
 
@@ -485,11 +463,12 @@ def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
         return x, y, z, ar
 
 
-def simulate_noisemap(template_name='HFI_SkyMap_143_2048_R2.02_full.fits',
+def simulate_noisemap(template_name='HFI_SkyMap_353_2048_R2.02_full.fits',
                       nu=None,
-                      newname='noisesim.fits'):
+                      newname='noisesim_353.fits'):
     if nu is not None:
         template_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
+        newname = 'noisesim_{}.fits'.format(nu)
 
     covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( data_path + template_name,
                                                             field=(4,5,6,7,8,9) )
@@ -501,7 +480,7 @@ def simulate_noisemap(template_name='HFI_SkyMap_143_2048_R2.02_full.fits',
     hp.fitsfunc.write_map( data_path + newname,
                            [Imap, Qmap, Umap])
 
-    return Imap, Qmap, Umap
+    return [Imap, Qmap, Umap]
 def create_I_noisemap(Npix, cov):
 
     nmap = np.random.standard_normal(Npix) * np.sqrt(cov)
@@ -516,3 +495,280 @@ def create_QU_noisemap(Npix, covQQ, covUU, covQU):
     nmapU = r1 * covQU / np.sqrt(covQQ) + r2 * np.sqrt(covUU - covQU**2/covQQ)
 
     return nmapQ, nmapU
+
+
+def get_alms(maps=None,
+            mask=None,
+            maplabel='353',
+            showI=False,
+            pol=True,
+            intensity=True,
+            rewrite=False,
+            writemap=False,
+            savealms=True,
+            masktype='PowerSpectra',#'GalPlane2',
+            lmax=100):
+
+    """Each written map file must contain I,Q,U, and each alms file
+            must contain Tlm, Elm, and Blm.
+    """
+
+    newname = 'alms_lmax{}_mask_{}__'.format(lmax, masktype) + maplabel + '.npy'
+    
+    if not os.path.exists(data_path + newname) or rewrite:
+        print 'alms file {} does not exist; calculating alms...'.format(newname)
+        if mask is None:
+            if masktype == 'PowerSpectra':
+                maskname = 'HFI_PowerSpect_Mask_2048_R1.10.fits'
+                maskfield = 0
+            elif masktype == 'GalPlane60':
+                maskname = 'HFI_Mask_GalPlane_2048_R1.10.fits',
+                maskfield = 2
+            elif masktype == 'no':
+                maskname = 'HFI_PowerSpect_Mask_2048_R1.10.fits'
+                maskfield = 0
+            mask = hp.read_map(data_path + maskname, field=maskfield)
+            if masktype == 'no':
+                mask = mask*0. + 1.
+        masknside = hp.get_nside(mask)
+        if maps is None:
+            Imap,Qmap,Umap = hp.read_map( data_path + 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(maplabel),hdu=1, field=(0,1,2) )
+            mapnside = hp.get_nside(Imap)
+        else:
+            if intensity and pol:
+                Imap = maps[0]
+                Qmap = maps[1]
+                Umap = maps[2]
+                mapnside = hp.get_nside(Imap)
+            elif intensity and not pol:
+                Imap = maps[0]
+                mapnside = hp.get_nside(Imap)
+            elif pol and not intensity:
+                Qmap = maps[0]
+                Umap = maps[1]
+                mapnside = hp.get_nside(Qmap)
+                
+        if masknside != mapnside:
+            print 'adjusting mask to match map resolution...'
+            mask = hp.pixelfunc.ud_grade(mask, nside_out=mapnside)
+
+        if showI:
+            hp.mollview(Imap*mask)
+
+        alms = []
+        if intensity:
+            Imap = Imap*mask
+            Tlm = hp.map2alm(Imap, lmax=lmax)
+            alms.append(Tlm)
+        if pol:
+            Qmap *= mask
+            Umap *= mask
+            Elm,Blm = hp.map2alm_spin( (Qmap,Umap), 2, lmax=lmax )
+            alms.append(Elm)
+            alms.append(Blm)
+
+        #this will only work if get_intensity and get_pol
+        if writemap and intensity and pol:
+            hp.fitsfunc.write_map( data_path + newname, [Imap, Qmap, Umap])
+            
+        if savealms and intensity and pol:
+            np.save(data_path + newname, alms)
+
+        return alms
+
+
+    else:
+        alms = np.load(data_path + newname)
+        if intensity and pol:
+            return alms[0], alms[1], alms[2]
+        else:
+            if intensity:
+                return alms[0]
+            if pol:
+                return alms[1], alms[2]
+            
+
+import pywigxjpf as wig
+lmax = 200
+wig.wig_table_init(2*lmax,9)
+wig.wig_temp_init(2*lmax)
+
+@jit
+def get_w3j(l1,l2,l3,m1,m2,m3):
+    return wig.wig3jj([2*l1, 2*l2, 2*l3, 2*m1, 2*m2, 2*m3])
+
+    
+
+def get_TEB_prerequisites(maps=None,
+                Imap_label='353',Pmap_label='353',
+                Imap_name=None,Pmap_name=None,
+                lmax=100,masktype='PowerSpectra',
+                rewrite=False,
+                iso=True):
+    """maps is a list of I,Q,U maps
+    """
+
+    if iso:
+        isolabel = '_iso'
+    filename = 'bispectrum{}__lmax{}_mask_{}_I{}_P{}.npy'.format(isolabel,
+                                                                 lmax,
+                                                                 masktype,
+                                                                 Imap_label,
+                                                                 Pmap_label)
+    
+    
+    
+    #if os.path.exists(filename) and not rewrite:
+    #    bispectrum = np.load(filename)
+    #    return bispectrum
+
+
+    Tlm, Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+                             maplabel=Imap_label,
+                             showI=False,rewrite=False,
+                             pol=True,intensity=True,
+                             writemap=False,savealms=True,
+                             lmax=lmax)
+
+    if Imap_label != Pmap_label:
+        Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+                             maplabel=Pmap_label,
+                             showI=False,rewrite=False,
+                             pol=True,intensity=False,
+                             writemap=False,savealms=True,
+                             lmax=lmax)
+  
+    ls, ms = hp.sphtfunc.Alm.getlm(lmax,np.arange(len(Tlm)))
+    lmin = ls.min()
+
+
+    hs = get_hs(lmin=lmin, lmax=lmax)
+    return Tlm,Elm,Blm,ls,ms,hs
+
+    #print 'calculating bispectrum ...'
+   
+    #if iso:
+    #    bispectrum = calc_b_iso(Tlm.real, Elm.real, Blm.real, ls, ms,
+    #                                hs, lmax=lmax)
+    #else:
+    #    bispectrum = calc_b(Tlm, Elm, Blm, ls, ms,
+    #                            hs, lmax=lmax)
+
+    #np.save(filename, bispectrum)
+    #return bispectrum
+
+@jit#(nopython=True)
+def calc_b_iso(Tlm, Elm, Blm,
+               ls, ms, hs, lmax=100):
+    result = np.zeros((lmax+1,lmax+1)) 
+    for i in np.arange(len(ls)):
+        l1 = ls[i]
+        m1 = ms[i]
+        for j in np.arange(len(ls)):
+            l2 = ls[j]
+            m2 = ms[j]
+            for k in np.arange(len(ms)):
+                l3 = ls[j]
+                m3 = ms[k]
+                factor = 2.
+                if l1==l2:
+                    factor = 1.
+
+                w3jfactor = wig.wig3jj([2*l1, 2*l2, 2*l2, 2*m1, 2*m2, 2*m3])#get_w3j(l1,l2,l2,m1,m2,m2)
+                result[l1,l2] += w3jfactor#Tlm[i] * Elm[j] * Blm[j] * factor * w3jfactor
+
+            #if hs[l1,l2,l2] == 0.:
+            #    result[l1,l2] = 0.
+            #else:
+            #    result[l1,l2] /= hs[l1,l2,l2]
+                
+    return result
+
+def calc_b():
+    result = np.zeros((lmax+1,lmax+1,lmax+1)) 
+    ls_array = np.arange(lmin, lmax+1)
+    for l1 in ls_array:
+        print 'slice #{}/{}...'.format(l1,lmax+1)
+        for l2 in ls_array:
+            for l3 in ls_array:
+                for m in np.arange(mapsize):
+                    result[l1,l2,l3] += Tl[l1,m] * El[l2,m] * Bl[l3,m]
+
+                if hs[l1,l2,l3] == 0.:
+                     result[l1,l2,l3] = 0.
+                else:
+                    result[l1,l2,l3] *= ( pixelsize / hs[l1,l2,l3]**2 )
+                
+    return result
+
+
+######################
+######################
+
+def get_prerequisites(maps=None,
+                Imap_label='353',Pmap_label='353',
+                Imap_name=None,Pmap_name=None,
+                lmax=100,masktype='PowerSpectra',
+                rewrite=False,
+                iso=True):
+   
+
+    if iso:
+        isolabel = '_iso'
+    filename = 'bispectrum{}__lmax{}_mask_{}_I{}_P{}.npy'.format(isolabel,
+                                                                 lmax,
+                                                                 masktype,
+                                                                 Imap_label,
+                                                                 Pmap_label)
+    
+    
+
+    Tlm, Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+                             maplabel=Imap_label,
+                             showI=False,rewrite=False,
+                             pol=True,intensity=True,
+                             writemap=False,savealms=True,
+                             lmax=lmax)
+
+    if Imap_label != Pmap_label:
+        Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+                             maplabel=Pmap_label,
+                             showI=False,rewrite=False,
+                             pol=True,intensity=False,
+                             writemap=False,savealms=True,
+                             lmax=lmax)
+
+    ls, ms = hp.sphtfunc.Alm.getlm(lmax,np.arange(len(Tlm)))
+    lmin = ls.min()
+
+    Tlm = make2d_alm(Tlm, lmax, ls, ms)
+    Elm = make2d_alm(Elm, lmax, ls, ms)
+    Blm = make2d_alm(Blm, lmax, ls, ms)
+
+    hs = get_hs(lmin=lmin, lmax=lmax)
+    return Tlm,Elm,Blm,hs
+
+@jit
+def make2d_alm(alm, lmax, ls, ms):
+    
+    #len_tot = sum([2*l + 1 for l in range(lmax + 1)])
+    alm2d = []
+    for l in range(lmax+1):
+        #print l
+        ms2d = range(l+1)
+        ms2d_neg = list(-1*np.array(list(reversed(range(1,l+1)))))
+        ms2d = ms2d + ms2d_neg
+        #print ms2d
+        alm2d.append(np.zeros(2*l + 1, dtype=complex))
+        l_inds = ls == l
+        for m in ms2d:
+            m_inds = ms == np.abs(m)
+            inds = m_inds & l_inds
+            #print m, (-1.)**m * np.conjugate(alm[inds])
+            if m < 0:
+                alm2d[l][m] = (-1.)**m * np.conjugate(alm[ms == np.abs(m)][0])
+            else:
+                alm2d[l][m] = alm[ms == m][0]
+
+    return alm2d
+        
