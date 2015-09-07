@@ -3,7 +3,7 @@
 from mpi4py import MPI
 import ctypes as ct
 import numpy as np
-import os, os.path
+import os, sys, os.path
 
 from numba import jit
 
@@ -40,6 +40,8 @@ def wig3j(l1, l2, l3, m1, m2, m3):
                     m1*2, m2*2, m3*2)
                   
 
+print(wig3j(3,4,5,0,0,0))
+sys.exit()
 
 # Use default communicator. No need to complicate things.
 COMM = MPI.COMM_WORLD
@@ -64,7 +66,7 @@ import healpy as hp
 #                                                  Imap_label='noisesim353')
 
 #Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax)
-Imap, Qmap, Umap = hp.read_map( '/Users/verag/Research/Repositories/npoint-fgs/data/noisesim_353.fits',field=(0,1,2) )
+Imap, Qmap, Umap = hp.read_map( '../data/noisesim_353.fits',field=(0,1,2) )
 Tlm, Elm, Blm, hs = get_prerequisites(maps=[Imap, Qmap, Umap],
                                                   lmax=lmax,
                                                   Imap_label='noisesim353')

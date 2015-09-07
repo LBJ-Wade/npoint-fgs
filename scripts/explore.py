@@ -29,7 +29,8 @@ from numba import jit
 from scipy.special import sph_harm
 
 
-data_path = '/Users/verag/Research/Repositories/npoint-fgs/data/'
+data_path = '/home/verag/Projects/Repositories/npoint-fgs/data/'
+#'/Users/verag/Research/Repositories/npoint-fgs/data/'
 
 def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
                 maskname='HFI_Mask_GalPlane_2048_R1.10.fits',
@@ -588,10 +589,10 @@ def get_alms(maps=None,
                 return alms[1], alms[2]
             
 
-import pywigxjpf as wig
-lmax = 200
-wig.wig_table_init(2*lmax,9)
-wig.wig_temp_init(2*lmax)
+#import pywigxjpf as wig
+#lmax = 200
+#wig.wig_table_init(2*lmax,9)
+#wig.wig_temp_init(2*lmax)
 
 @jit
 def get_w3j(l1,l2,l3,m1,m2,m3):
