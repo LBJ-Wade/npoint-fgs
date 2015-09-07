@@ -402,10 +402,14 @@ def calc_hs(Fks, lmin=0, lmax=100):
 
     return res
 
-def plot_bispectrum(b,slices=None,title=None,filename=None):
+def plot_bispectrum(b,slices=None, axis=0,
+                    title=None,filename=None,
+                    logplot=True):
 
-    y = np.log10( np.abs(b) )
-    #y = b
+    if logplot:
+        y = np.log10( np.abs(b) )
+    else:
+        y = b
   
     #ypositive = np.zeros(b.shape)
     #ynegative = np.zeros(b.shape)
@@ -421,11 +425,11 @@ def plot_bispectrum(b,slices=None,title=None,filename=None):
     else:
         slices = np.atleast_1d(slices)
         for s in slices:
-            plot_slice_bispectrum(y, s=s, title=title)
+            plot_slice_bispectrum(y, axis=axis, s=s, title=title)
             if filename is not None:
                 plt.savefig(filename)
 
-def plot_slice_bispectrum(y, s=None, title='',
+def plot_slice_bispectrum(y, s=None, axis=0, title='',
                           colormap='coolwarm'):
     if s is None:
         s=10
@@ -437,7 +441,13 @@ def plot_slice_bispectrum(y, s=None, title='',
         title = '$\ell_1$={}'.format(s)
     pl.title(title, fontsize=20)
 
-    pl.imshow(y[s], cmap=colormap)
+    if axis==0:
+        yy = y[s]
+    elif axis==1:
+        yy = y[:,s]
+    elif axis==2:
+        yy = y[:,:,s]
+    pl.imshow(yy, cmap=colormap)
     pl.colorbar()
 
 def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
@@ -463,9 +473,9 @@ def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
         return x, y, z, ar
 
 
-def simulate_noisemap(template_name='HFI_SkyMap_353_2048_R2.02_full.fits',
+def simulate_noisemap(template_name='HFI_SkyMap_143_2048_R2.02_full.fits',
                       nu=None,
-                      newname='noisesim_353.fits'):
+                      newname='noisesim_143.fits'):
     if nu is not None:
         template_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
         newname = 'noisesim_{}.fits'.format(nu)
