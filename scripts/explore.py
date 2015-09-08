@@ -514,7 +514,10 @@ def get_alms(maps=None,
             must contain Tlm, Elm, and Blm.
     """
 
+
     newname = 'alms_lmax{}_mask_{}__'.format(lmax, masktype) + maplabel + '.npy'
+   
+
     
     if not os.path.exists(data_path + newname) or rewrite:
         print 'alms file {} does not exist; calculating alms...'.format(newname)
@@ -711,7 +714,8 @@ def get_prerequisites(maps=None,
                 Imap_name=None,Pmap_name=None,
                 lmax=100,masktype='PowerSpectra',
                 rewrite=False,
-                iso=True):
+                iso=True,
+                almfilename=None):
    
 
     if iso:
@@ -724,15 +728,19 @@ def get_prerequisites(maps=None,
     
     
 
-    Tlm, Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+    if almfilename is not None:
+        Tlm, Elm, Blm = np.load(data_path + almfilename)
+    else:
+        Tlm, Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
                              maplabel=Imap_label,
                              showI=False,rewrite=False,
                              pol=True,intensity=True,
                              writemap=False,savealms=True,
                              lmax=lmax)
+    
 
-    if Imap_label != Pmap_label:
-        Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
+        if Imap_label != Pmap_label:
+            Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
                              maplabel=Pmap_label,
                              showI=False,rewrite=False,
                              pol=True,intensity=False,

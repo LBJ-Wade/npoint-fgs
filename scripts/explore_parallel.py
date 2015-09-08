@@ -40,8 +40,8 @@ def wig3j(l1, l2, l3, m1, m2, m3):
                     m1*2, m2*2, m3*2)
                   
 
-print(wig3j(3,4,5,0,0,0))
-sys.exit()
+#print(wig3j(3,4,5,0,0,0))
+#sys.exit()
 
 # Use default communicator. No need to complicate things.
 COMM = MPI.COMM_WORLD
@@ -65,11 +65,14 @@ import healpy as hp
 #                                                  lmax=lmax,
 #                                                  Imap_label='noisesim353')
 
-#Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax)
-Imap, Qmap, Umap = hp.read_map( '../data/noisesim_353.fits',field=(0,1,2) )
-Tlm, Elm, Blm, hs = get_prerequisites(maps=[Imap, Qmap, Umap],
-                                                  lmax=lmax,
-                                                  Imap_label='noisesim353')
+
+#Imap, Qmap, Umap = hp.read_map( '../data/noisesim_353.fits',field=(0,1,2) )
+
+#Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax,
+#                                      Imap_label='143',Pmap_label='143')
+
+Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax,
+                                      almfilename='alms_lmax50_mask_PowerSpectra__noisesim353.npy')
 
 N = len(Tlm)
 
@@ -133,7 +136,7 @@ bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    np.save('bispectrum_test2_lmax{}.npy'.format(lmax),bispectrum)
+    np.save('bispectrum_noisetest143_lmax{}.npy'.format(lmax),bispectrum)
     #print(bispectrum.shape)
     #print(bispectrum.mean(), bispectrum.std())
 
