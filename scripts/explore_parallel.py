@@ -54,7 +54,7 @@ def split(container, count):
     """
     return [container[_i::count] for _i in range(count)]
 
-lmax = 50
+lmax = 2
 
 from explore import get_TEB_prerequisites,get_prerequisites
 import healpy as hp
@@ -72,7 +72,7 @@ import healpy as hp
 #                                      Imap_label='143',Pmap_label='143')
 
 Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax,
-                                      almfilename='alms_lmax50_mask_PowerSpectra__noisesim353.npy')
+                                      almfilename='alms_lmax2_mask_PowerSpectra__noisesim353.npy')
 
 N = len(Tlm)
 
