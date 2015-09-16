@@ -5,7 +5,7 @@ import matplotlib
 if __name__=='__main__':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+from astropy.io import fits
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib as mpl
 import matplotlib.patheffects as PathEffects
@@ -29,11 +29,11 @@ from numba import jit
 from scipy.special import sph_harm
 
 
-data_path = '/home/verag/Projects/Repositories/npoint-fgs/data/'
-#'/Users/verag/Research/Repositories/npoint-fgs/data/'
+#data_path = '/home/verag/Projects/Repositories/npoint-fgs/data/'
+data_path = '/Users/verag/Research/Repositories/npoint-fgs/data/'
 
 def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
-                maskname='HFI_Mask_GalPlane_2048_R1.10.fits',
+                maskname='HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
                 field = (0,1,2),
                 fwhm=0.0,
                 nside_out=128,
@@ -214,7 +214,7 @@ def calc_TEB(Imap_name='HFI_SkyMap_353_2048_R2.02_full.fits',
                 filename += '.npy'
     print 'looking for {} ...'.format(filename)
     if os.path.exists(filename) and not lmaps_only:
-        bispectrum = np.load(filename)
+        bispectrum = np.load(filename, 'r')
         return bispectrum
 
     # compute it, if the file doesn't exist
@@ -342,7 +342,7 @@ def calc_Ylm(mapa, ls, ms):
             ylm.append(sph_harm(m, l, theta, phi))
 
         np.save(filename,ylm)
-    ylm = np.load(filename)
+    ylm = np.load(filename, 'r')
     return ylm
 
 
@@ -380,10 +380,10 @@ def w3j000(L, l, lp, Fks):
     
     return res
 
-def get_hs(lmin=0, lmax=100):
-    filename = 'hs_lmax100.npy'
+def get_hs(filename, lmax=100):
+
     if os.path.exists(filename):
-        hs = np.load(filename)
+        hs = np.load(filename, 'r')
         return hs
 
     Fks = np.loadtxt('Fks_1000.txt')
@@ -403,10 +403,12 @@ def calc_hs(Fks, lmin=0, lmax=100):
 
     return res
 
-def plot_bispectrum(b,slices=None,title=None,filename=None):
+def plot_bispectrum(b,slices=None,title=None,logplot=True,filename=None):
 
-    y = np.log10( np.abs(b) )
-    #y = b
+    if logplot:
+        y = np.log10( np.abs(b) )
+    else:
+        y = b
   
     #ypositive = np.zeros(b.shape)
     #ynegative = np.zeros(b.shape)
@@ -443,7 +445,7 @@ def plot_slice_bispectrum(y, s=None, title='',
 
 def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
                side=None, returntable=False):
-    ar = np.load(filename)
+    ar = np.load(filename, 'r')
     x = np.zeros(ar.shape)
     y = np.zeros(ar.shape)
     z = np.zeros(ar.shape)
@@ -464,7 +466,7 @@ def npy_to_dat(filename='bispectrum_lmax100_353-353-353GHz.npy',
         return x, y, z, ar
 
 
-def simulate_noisemap(template_name='HFI_SkyMap_353_2048_R2.02_full.fits',
+def simulate_noisemap_old(template_name='HFI_SkyMap_353_2048_R2.02_full.fits',
                       nu=None,
                       newname='noisesim_353.fits'):
     if nu is not None:
@@ -526,7 +528,7 @@ def get_alms(maps=None,
                 maskname = 'HFI_PowerSpect_Mask_2048_R1.10.fits'
                 maskfield = 0
             elif masktype == 'GalPlane60':
-                maskname = 'HFI_Mask_GalPlane_2048_R1.10.fits',
+                maskname = 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
                 maskfield = 2
             elif masktype == 'no':
                 maskname = 'HFI_PowerSpect_Mask_2048_R1.10.fits'
@@ -582,7 +584,7 @@ def get_alms(maps=None,
 
 
     else:
-        alms = np.load(data_path + newname)
+        alms = np.load(data_path + newname, 'r')
         if intensity and pol:
             return alms[0], alms[1], alms[2]
         else:
@@ -714,14 +716,11 @@ def get_prerequisites(maps=None,
                 Imap_name=None,Pmap_name=None,
                 lmax=100,masktype='PowerSpectra',
                 rewrite=False,
-                iso=True,
                 almfilename=None):
    
 
-    if iso:
-        isolabel = '_iso'
-    filename = 'bispectrum{}__lmax{}_mask_{}_I{}_P{}.npy'.format(isolabel,
-                                                                 lmax,
+
+    filename = 'bispectrum__lmax{}_mask_{}_I{}_P{}.npy'.format(lmax,
                                                                  masktype,
                                                                  Imap_label,
                                                                  Pmap_label)
@@ -729,7 +728,7 @@ def get_prerequisites(maps=None,
     
 
     if almfilename is not None:
-        Tlm, Elm, Blm = np.load(data_path + almfilename)
+        Tlm, Elm, Blm = np.load(data_path + almfilename, 'r')
     else:
         Tlm, Elm, Blm = get_alms(maps=maps,mask=None,masktype=masktype,
                              maplabel=Imap_label,
@@ -754,30 +753,597 @@ def get_prerequisites(maps=None,
     Elm = make2d_alm(Elm, lmax, ls, ms)
     Blm = make2d_alm(Blm, lmax, ls, ms)
 
-    hs = get_hs(lmin=lmin, lmax=lmax)
+    hs = get_hs('hs_lmax100.npy',lmax=lmax)
     return Tlm,Elm,Blm,hs
 
-@jit
+
+
+
 def make2d_alm(alm, lmax, ls, ms):
     
-    #len_tot = sum([2*l + 1 for l in range(lmax + 1)])
     alm2d = []
     for l in range(lmax+1):
-        #print l
-        ms2d = range(l+1)
-        ms2d_neg = list(-1*np.array(list(reversed(range(1,l+1)))))
-        ms2d = ms2d + ms2d_neg
-        #print ms2d
+        ms2d = np.arange(-l,l+1)
         alm2d.append(np.zeros(2*l + 1, dtype=complex))
-        l_inds = ls == l
+        l_inds = ls==l
         for m in ms2d:
-            m_inds = ms == np.abs(m)
-            inds = m_inds & l_inds
-            #print m, (-1.)**m * np.conjugate(alm[inds])
+            m_inds = ms==np.abs(m)
+            ind = m_inds & l_inds
             if m < 0:
-                alm2d[l][m] = (-1.)**m * np.conjugate(alm[ms == np.abs(m)][0])
+                alm2d[l][m] = (-1.)**m * np.conjugate(alm[ind][0])
             else:
-                alm2d[l][m] = alm[ms == m][0]
+                alm2d[l][m] = alm[ind][0]
 
     return alm2d
+        
+@jit#(nopython=True)
+def make2d_alm_square(alm, lmax, ls, ms):
+    alm2d = np.zeros( ( lmax + 1, 2*lmax + 1), dtype=complex )
+    for l in range(lmax+1):
+        ms2d = np.arange(-l,l+1)
+
+        l_inds = ls==l
+        for m in ms2d:
+            m_inds = ms==np.abs(m)
+            ind = m_inds & l_inds
+            if m < 0:
+                alm2d[l][m] = (-1.)**m * np.conjugate(alm[ind][0])
+            else:
+                alm2d[l][m] = alm[ind][0]
+
+    return alm2d
+        
+beam_index = {
+    '100': 3,
+    '143': 4,
+    '217': 5,
+    '353': 6,
+    '100P': 7,
+    '143P': 8,
+    '217P': 9,
+    '353P': 10,
+    }
+
+def cl_alm2d(alm1=None, alm2=None, lmax=100):
+    """this function is just a test for make2d_alm/make2d_alm_square;
+    it computes the cl from given alm2d that
+    make2d_alm/make2d_alm_square returns, to make sure they match healpy result.
+    """
+    if alm2 is None:
+        alm2 = alm1
+    cl = np.zeros(lmax+1)
+    ls = np.arange(lmax+1)
+    for l in ls:
+        ms = np.arange(-l,l+1)
+        
+        cl[l] += ((alm1[l][ms]*np.conjugate(alm2[l][ms])).real).sum()/(2.*l+1.)
+    return cl
+
+def check_Tlm2d(nu=100, lmax=300,
+                maskfield=2, source_maskfield=0,
+                label_loc='lower right', xmax=None):
+    
+    Imap_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
+    Imap =hp.read_map(data_path + Imap_name)
+    mask=hp.read_map(data_path + 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
+                     field=maskfield)
+    smask=hp.read_map(data_path + 'HFI_Mask_PointSrc_2048_R2.00.fits',
+                     field=source_maskfield)
+    mask *= smask
+
+    hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
+    beam = hdulist[beam_index['{}'.format(nu)]].data.NOMINAL[0][:lmax+1]
+    
+    tlm = get_Tlm(lmax=lmax, Imap=Imap, mask=mask,
+                  healpy_format=False, recalc=True, div_beam=beam)
+    tlm_hp = get_Tlm(lmax=lmax, Imap=Imap, mask=mask,
+                  healpy_format=True, recalc=True, div_beam=beam)
+
+    cl = cl_alm2d(alm1=tlm, lmax=lmax)
+    l = np.arange(len(cl))
+    cl_hp = hp.alm2cl(tlm_hp, lmax=lmax)
+    l_hp = np.arange(len(cl_hp))
+
+    clplanck = np.loadtxt(data_path + 'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl')
+    cl_planck = clplanck[:,1]
+    l_planck = clplanck[:,0]
+
+    pl.figure()
+    pl.title('TT check')
+    pl.plot(l, cl*l*(l+1)/2./np.pi*1e12, label='2d')
+    pl.plot(l_hp,cl_hp*l_hp*(l_hp+1)/2./np.pi*1e12, label='healpy')
+    pl.plot(l_planck, cl_planck, label='planck best fit')
+    pl.legend(loc=label_loc)
+    if xmax is None:
+        pl.xlim(xmax=lmax)
+    else:
+        pl.xlim(xmax=xmax)
+
+
+
+def check_EBlm2d(nu1=100,nu2=143, lmax=300,
+                maskfield=2, source_maskfield=0,
+                label_loc='lower right', xmax=None):
+    
+    map_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu1)
+    Q1,U1 =hp.read_map(data_path + map_name, field=(1,2))
+    map_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu2)
+    Q2,U2 =hp.read_map(data_path + map_name, field=(1,2))
+    mask=hp.read_map(data_path + 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
+                     field=maskfield)
+    smask=hp.read_map(data_path + 'HFI_Mask_PointSrc_2048_R2.00.fits',
+                     field=source_maskfield)
+    mask *= smask
+
+    hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
+    beam1 = hdulist[beam_index['{}P'.format(nu1)]].data.NOMINAL[0][:lmax+1]
+    beam2 = hdulist[beam_index['{}P'.format(nu2)]].data.NOMINAL[0][:lmax+1]
+    
+    elm1,blm1 = get_ElmBlm(lmax=lmax, Qmap=Q1, Umap=U1, mask=mask,
+                  healpy_format=False, recalc=True, div_beam=beam1)
+    elm_hp1,blm_hp1 = get_ElmBlm(lmax=lmax, Qmap=Q1, Umap=U1, mask=mask,
+                  healpy_format=True, recalc=True, div_beam=beam1)
+    elm2,blm2 = get_ElmBlm(lmax=lmax, Qmap=Q2, Umap=U2, mask=mask,
+                  healpy_format=False, recalc=True, div_beam=beam2)
+    elm_hp2,blm_hp2 = get_ElmBlm(lmax=lmax, Qmap=Q2, Umap=U2, mask=mask,
+                  healpy_format=True, recalc=True, div_beam=beam2)
+
+    clee = cl_alm2d(alm1=elm1, alm2=elm2, lmax=lmax)
+    clbb = cl_alm2d(alm1=blm1,alm2=blm2, lmax=lmax)
+    l = np.arange(len(clee))
+    clee_hp = hp.alm2cl(elm_hp1,elm_hp2, lmax=lmax)
+    clbb_hp = hp.alm2cl(blm_hp1,blm_hp2, lmax=lmax)
+    l_hp = np.arange(len(clee_hp))
+
+    clplanck = np.loadtxt(data_path + 'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl')
+    clee_planck = clplanck[:,3]
+    clbb_planck = clplanck[:,4]
+    l_planck = clplanck[:,0]
+
+    pl.figure()
+    pl.title('EE check')
+    pl.plot(l, clee*l*(l+1)/2./np.pi*1e12, label='2d')
+    pl.plot(l,clee_hp*l_hp*(l_hp+1)/2./np.pi*1e12, label='healpy')
+    pl.plot(l_planck, clee_planck, label='planck best fit')
+    pl.legend(loc=label_loc)
+    if xmax is None:
+        pl.xlim(xmax=lmax)
+    else:
+        pl.xlim(xmax=xmax)
+
+    pl.figure()
+    pl.title('BB check')
+    pl.plot(l, clbb*l*(l+1)/2./np.pi*1e12, label='2d')
+    pl.plot(l_hp,clbb_hp*l_hp*(l_hp+1)/2./np.pi*1e12, label='healpy')
+    pl.plot(l_planck, clbb_planck, label='planck best fit')
+    pl.legend(loc=label_loc)
+    if xmax is None:
+        pl.xlim(xmax=lmax)
+    else:
+        pl.xlim(xmax=xmax)
+    
+def check_TE2d(nu=100, lmax=300,
+                maskfield=2, source_maskfield=0,
+                label_loc='lower right', xmax=None):
+    
+    map_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
+    I,Q,U =hp.read_map(data_path + map_name, field=(0,1,2))
+    mask=hp.read_map(data_path + 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
+                     field=maskfield)
+    smask=hp.read_map(data_path + 'HFI_Mask_PointSrc_2048_R2.00.fits',
+                     field=source_maskfield)
+    mask *= smask
+
+    hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
+    beamP = hdulist[beam_index['{}P'.format(nu)]].data.NOMINAL[0][:lmax+1]
+    beam = hdulist[beam_index['{}'.format(nu)]].data.NOMINAL[0][:lmax+1]
+
+    #tlm = get_Tlm(lmax=lmax, Imap=I, mask=mask,
+    #              healpy_format=False, recalc=True, div_beam=beam)
+    #elm,blm = get_ElmBlm(lmax=lmax, Qmap=Q, Umap=U, mask=mask,
+    #              healpy_format=False, recalc=True, div_beam=beamP)
+    tlm_hp = get_Tlm(lmax=lmax, Imap=I, mask=mask,
+                  healpy_format=True, recalc=True, div_beam=beam)
+    elm_hp,blm_hp = get_ElmBlm(lmax=lmax, Qmap=Q, Umap=U, mask=mask,
+                  healpy_format=True, recalc=True, div_beam=beamP)
+
+    #cltt = cl_alm2d(tlm, lmax)
+    #clee = cl_alm2d(elm, lmax)
+    #clbb = cl_alm2d(blm, lmax)
+    #l = np.arange(len(clee))
+    clte_hp = hp.alm2cl(tlm_hp, elm_hp, lmax=lmax)
+    #clee_hp = hp.alm2cl(elm_hp, lmax=lmax)
+    #clbb_hp = hp.alm2cl(blm_hp, lmax=lmax)
+    l_hp = np.arange(len(clte_hp))
+
+    clplanck = np.loadtxt(data_path + 'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl')
+    clte_planck = clplanck[:,2]
+    #clee_planck = clplanck[:,3]
+    #clbb_planck = clplanck[:,4]
+    l_planck = clplanck[:,0]
+
+    pl.figure()
+    pl.title('TE check')
+    #pl.plot(l, clee*l*(l+1)/2./np.pi*1e12, label='2d')
+    pl.plot(l_hp,clte_hp*l_hp*(l_hp+1)/2./np.pi*1e12, label='healpy')
+    pl.plot(l_planck, clte_planck, label='planck best fit')
+    pl.legend(loc=label_loc)
+    if xmax is None:
+        pl.xlim(xmax=lmax)
+    else:
+        pl.xlim(xmax=xmax)
+            
+#########%%%%%%%%%%%%%^^^^^^^^^^^^^^^&&&&&&**********************
+def get_Tlm(filename='test_tlm.npy',
+            Imap=None, mask=None,
+            add_beam=None,div_beam=None,
+            healpy_format=False,
+            lmax=100, recalc=True,
+            filtermap=False, l0=None,
+            save=False):
+    """computes and saves 2d alms from a given
+    map and mask, corrected for sqrt(fsky), beams added or divided by choice.
+    """
+    if not recalc and os.path.exists(data_path + filename):
+        Tlm2d = np.load(data_path + filename, 'r')
+        return Tlm2d
+    fsky = mask.sum() / len(mask)
+    Tlm = hp.map2alm(Imap * mask, lmax=lmax) / np.sqrt(fsky)
+    if add_beam is not None:
+        hp.sphtfunc.almxfl(Tlm, add_beam, inplace=True)
+    if div_beam is not None:
+        hp.sphtfunc.almxfl(Tlm, 1./div_beam, inplace=True)
+
+    if not healpy_format:
+        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Tlm)))
+        Tlm = make2d_alm(Tlm, lmax, ls, ms)
+    if save:
+        np.save(data_path + filename, Tlm)
+    return Tlm
+
+def get_ElmBlm(filename='test_elmblm.npy',
+               Qmap=None, Umap=None, mask=None,
+               lmax=100,add_beam=None,div_beam=None,
+               healpy_format=False,
+               recalc=True,
+               filtermap=False, l0=None,
+               save=False):
+    """computes and saves 2d (Elms, Blms) from given
+    Q and U maps, corrected for sqrt(fsky)
+    """
+    if not recalc and os.path.exists(data_path + filename):
+        Elm2d, Blm2d = np.load(data_path + filename, 'r')
+        return Elm2d, Blm2d
+    fsky = mask.sum() / len(mask)
+    Elm, Blm = hp.map2alm_spin( (Qmap*mask,Umap*mask), 2, lmax=lmax )
+    Elm /= np.sqrt(fsky)
+    Blm /= np.sqrt(fsky)
+    if add_beam is not None:
+        hp.sphtfunc.almxfl(Elm, add_beam, inplace=True)
+        hp.sphtfunc.almxfl(Blm, add_beam, inplace=True)
+    if div_beam is not None:
+        hp.sphtfunc.almxfl(Elm, 1./div_beam, inplace=True)
+        hp.sphtfunc.almxfl(Blm, 1./div_beam, inplace=True)
+    if not healpy_format:
+        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Elm)))
+        Elm = make2d_alm(Elm, lmax, ls, ms)
+        Blm = make2d_alm(Blm, lmax, ls, ms)
+    if save:
+        np.save(data_path + filename, [Elm,Blm])
+    return Elm, Blm
+
+
+
+def get_cholesky_noise(frequency=100, mapname=None,
+                 save=True,rewrite=False):
+
+    if mapname is None:
+        mapname = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+    newname = mapname[:-5] + '_cholesky.npy'
+    
+    if os.path.exists(data_path + newname) and not rewrite:
+        L = np.load(data_path + newname, 'r')
+        print 'found it! ({})'.format(data_path + newname)
+        return L
+
+    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( data_path + mapname,
+                                                            field=(4,5,6,7,8,9) )
+    npix = len(covII)
+    L = calc_cholesky_IQU(covII, covIQ, covIU, covQQ, covQU, covUU, npix)
+    if save:
+        np.save(data_path + newname, L)
+    return L
+
+@jit(nopython=True)
+def calc_cholesky_IQU(covII, covIQ, covIU, covQQ, covQU, covUU, npix):
+
+    L = np.zeros((npix,3,3))
+    for i in np.arange(npix):
+        L[i,0,0] = np.sqrt(covII[i])
+        L[i,1,0] = covIQ[i] / L[i,0,0]
+        L[i,2,0] = covIU[i] / L[i,0,0]
+        L[i,1,1] = np.sqrt(covQQ[i] - L[i,1,0]**2)
+        L[i,2,1] = (covQU[i] - L[i,2,0] * L[i,1,0]) / L[i,1,1]
+        L[i,2,2] = np.sqrt(covUU[i] - (L[i,2,0]**2 + L[i,2,1]**2) )
+        
+
+    return L
+         
+def check_noise(nmaps=100, npix=50331648,frequency=100):
+
+    mapname = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( data_path + mapname,
+                                                            field=(4,5,6,7,8,9) )
+    
+    covii = np.zeros(npix)
+    covqq = np.zeros(npix)
+    covuu = np.zeros(npix)
+    coviq = np.zeros(npix)
+    coviu = np.zeros(npix)
+    covqu = np.zeros(npix)
+    
+    for i in np.arange(nmaps):
+        print '{}/{}...'.format(i+1,nmaps)
+        I,Q,U = simulate_noisemap(npix=npix, frequency=frequency,save=False)
+
+        covii += I*I / nmaps
+        covqq += Q*Q / nmaps
+        covuu += U*U / nmaps
+        coviq += I*Q / nmaps
+        coviu += I*U / nmaps
+        covqu += U*Q / nmaps
+
+    return covii,covqq,covuu,coviq,coviu,covqu
+    hp.mollview(np.abs(covii - covII)/covII)
+    pl.title('II')
+    hp.mollview(np.abs(covqq - covQQ)/covQQ)
+    pl.title('QQ')
+    hp.mollview(np.abs(covuu - covUU)/covUU)
+    pl.title('UU')
+    hp.mollview(np.abs(coviq - covIQ)/covIQ)
+    pl.title('IQ')
+    hp.mollview(np.abs(coviu - covIU)/covIU)
+    pl.title('IU')
+    hp.mollview(np.abs(covqu - covQU)/covQU)
+    pl.title('QU') 
+
+    
+
+
+        
+def simulate_noise(npix=50331648, frequency=100,
+                      save=True, filename='test_noise100.fits'):
+
+    I = np.random.standard_normal(npix)
+    Q = np.random.standard_normal(npix)
+    U = np.random.standard_normal(npix)
+    L = np.load(data_path + 'HFI_SkyMap_{}_2048_R2.02_full_cholesky.npy'.format(frequency), 'r')
+    I, Q, U = L_dot_rand_map(L,I,Q,U,npix)
+    if save:
+        hp.write_map(filename,[I,Q,U])
+    return I, Q, U
+
+@jit(nopython=True)
+def L_dot_rand_map(L,rand_I,rand_Q,rand_U,npix):
+    Imap = np.zeros(npix)
+    Qmap = np.zeros(npix)
+    Umap = np.zeros(npix)
+    for i in np.arange(npix):
+        Imap[i] = L[i][0,0] * rand_I[i]
+        Qmap[i] = L[i][1,0] * rand_I[i] + L[i][1,1] * rand_Q[i]
+        Umap[i] = L[i][2,0] * rand_I[i] + L[i][2,1] * rand_Q[i] + L[i][2,2] * rand_U[i]
+    return Imap, Qmap, Umap
+
+
+def simulate_cmb(nside=2048, lmax=3000,
+                 frequency=100,smear=False,
+                 nomap = False, beam=None, beamP=None,
+                 save=False, filename='testcmb.fits',
+                 cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+        
+    ls, cltt, clte, clee, clbb = get_theory_cls(lmax=lmax, cl_file=cl_file)
+ 
+    Tlm, Elm, Blm = hp.synalm( (cltt, clee, clbb, clte), new=True, lmax=lmax)
+
+    
+    if smear:
+        if (beam is None) or (beamP is None) :
+            hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
+            beam = hdulist[beam_index['{}'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+            beamP = hdulist[beam_index['{}P'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+        hp.sphtfunc.almxfl(Tlm, beam, inplace=True)
+        hp.sphtfunc.almxfl(Elm, beamP, inplace=True)
+        hp.sphtfunc.almxfl(Blm, beamP, inplace=True)
+
+    if nomap:
+        return Tlm,Elm,Blm
+    
+    Tmap = hp.alm2map( Tlm, nside )
+    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
+
+    if save:
+        hp.write_map([Tmap,Qmap,Umap],data_path + filename)
+    return Tmap, Qmap, Umap
+
+def get_theory_cls(lmax=3000,cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+    """ Read theory cls, remove factor of l*(l+1)/2pi,
+        convert to uK_CMB^2 units,
+        and pad with zeros, such that l starts at 0.
+    """
+
+    cl = np.loadtxt(data_path + cl_file)
+    ls = np.arange(lmax+1)
+
+    factor = cl[:lmax-1, 0]*(cl[:lmax-1, 0] + 1.) / (2.*np.pi) * 1.e12
+    cltt = cl[:lmax-1, 1] / factor
+    clte = cl[:lmax-1, 2] / factor
+    clee = cl[:lmax-1, 3] / factor
+    clbb = cl[:lmax-1, 4] / factor
+    
+    cltt = np.concatenate((np.array([0,0]),cltt))
+    clte = np.concatenate((np.array([0,0]),clte))
+    clee = np.concatenate((np.array([0,0]),clee))
+    clbb = np.concatenate((np.array([0,0]),clbb))
+
+    return ls, cltt, clte, clee, clbb
+
+
+def check_cl_sims(nmaps=1,lmax=1000,nside=2048,
+                  read_file=False,
+                  filename='testsky.fits',frequency=100,
+                  beam=None, beamP=None, smear=True,
+                  nonoise=False,
+                  cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+
+    if read_file and os.path.exists(data_path + filename):
+        Tmap, Qmap, Umap = hp.read_map(data_path + filename, field=(0,1,2))
+    else:
+        if nonoise:
+            Tmap, Qmap, Umap = simulate_cmb(nside=nside, lmax=lmax,save=False,
+                                        smear=smear, beam=beam, beamP=beamP,
+                                        cl_file=cl_file)
+        else:
+            Tmap, Qmap, Umap = observe_cmb_sky(save=False, nside=nside, npix=None, lmax=3000,
+                                                frequency=frequency, beam=beam, beamP=beamP,
+                                                cl_file=cl_file)
+            
+    Tlm = hp.map2alm(Tmap, lmax=lmax)
+    Elm,Blm = hp.map2alm_spin( (Qmap,Umap), 2, lmax=lmax )
+
+    if smear:
+        if (beam is None) or (beamP is None) :
+            hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
+            beam = hdulist[beam_index['{}'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+            beamP = hdulist[beam_index['{}P'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+        hp.sphtfunc.almxfl(Tlm, 1./beam, inplace=True)
+        hp.sphtfunc.almxfl(Elm, 1./beamP, inplace=True)
+        hp.sphtfunc.almxfl(Blm, 1./beamP, inplace=True)
+    
+    ls = np.arange(lmax+1)
+    factor = ls * ( ls + 1. ) / (2.*np.pi)
+    
+    cltt = hp.alm2cl(Tlm) * factor
+    clee = hp.alm2cl(Elm) * factor
+    clbb = hp.alm2cl(Blm) * factor
+    clte = hp.alm2cl(Tlm, Elm) * factor
+                                                  
+    cl = get_theory_cls()
+    ls_theory = cl[0][:lmax+1]
+    factor_theory = ls_theory * ( ls_theory + 1. ) / (2.*np.pi)
+    
+    cltt_theory = cl[1][:lmax+1] * factor_theory
+    clte_theory = cl[2][:lmax+1] * factor_theory
+    clee_theory = cl[3][:lmax+1] * factor_theory
+    clbb_theory = cl[4][:lmax+1] * factor_theory
+
+    plt.figure()
+    plt.plot(ls, cltt, label='sims')
+    plt.plot(ls_theory, cltt_theory,label='theory TT')
+    plt.legend()
+    
+    plt.figure()
+    plt.plot(ls, clte, label='sims')
+    plt.plot(ls_theory, clte_theory,label='theory TE')
+    plt.legend()
+
+    plt.figure()
+    plt.plot(ls, clee, label='sims')
+    plt.plot(ls_theory, clee_theory,label='theory EE')
+    plt.legend()
+
+    plt.figure()
+    plt.plot(ls, clbb, label='sims')
+    plt.plot(ls_theory, clbb_theory,label='theory BB')
+    plt.legend()
+
+def observe_cmb_sky(save=False, filename='testsky.fits',
+                    nside=2048, npix=None, lmax=3000,
+                    frequency=100, beam=None, beamP=None,
+                    cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+
+    if npix is None:
+        npix = hp.nside2npix(nside)
+    if nside is None:
+        nside = hp.npix2nside(npix)
+        
+    Tcmb, Qcmb, Ucmb = simulate_cmb(nside=nside, lmax=lmax,
+                                frequency=frequency,smear=True,
+                                nomap=False, save=False,
+                                beam=beam, beamP=beamP,
+                                cl_file=cl_file)
+    Tnoise, Qnoise, Unoise = simulate_noise(npix=npix,
+                                            frequency=frequency,
+                                            save=False)
+
+    if save:
+        hp.write_map(data_path + filename, [Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise])
+
+    return Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise
+
+
+
+def observe_alms(save=True, filetag='test',
+                     mask=None,mask_percentage=60,mask_sources=True,
+                     apodization='0',
+                    nside=2048, npix=None, lmax=3000,
+                    frequency=100, beam=None, beamP=None,
+                    simulation=True,return_alms=True,
+                    cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+
+    if mask is None:
+        mask = get_mask(mask_percentage=mask_percentage,
+                        mask_sources=mask_sources,
+                        apodization=apodization)
+
+    if simulation:
+        Imap, Qmap, Umap = observe_cmb_sky(save=False,
+                    nside=nside, npix=None, lmax=lmax,
+                    frequency=frequency,
+                    cl_file=cl_file)
+    else:
+        mapname = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+        Imap, Qmap, Umap = hp.read_map(data_path + mapname, field=(0,1,2))
+
+    if save:
+        Pfilename = data_path + 'ElmBlm_{}.npy'.format(filetag)
+        Tfilename = data_path + 'Tlm_{}.npy'.format(filetag)
+        
+    Elm, Blm = get_ElmBlm(filename=Pfilename,
+                            Qmap=Qmap, Umap=Umap, mask=mask,
+                            lmax=lmax,add_beam=None,div_beam=None,
+                            healpy_format=False,
+                            recalc=recalc,
+                            filtermap=False, l0=None,
+                            save=save)
+
+    Tlm = get_Tlm(filename=Tfilename,
+                            Imap=Imap, mask=mask,
+                            lmax=lmax,add_beam=None,div_beam=None,
+                            healpy_format=False,
+                            recalc=recalc,
+                            filtermap=False, l0=None,
+                            save=save)
+
+    if return_alms:
+        return Tlm,Elm,Blm
+
+    
+
+MASK_FIELD = {
+    60: 2,
+
+}
+
+def get_mask(mask_percentage=60,
+             mask_sources=True,
+             apodization='0'):
+
+    field = MASK_FIELD[mask_percentage]
+    mask = hp.read_map(data_path + 'HFI_Mask_GalPlane-apo{}_2048_R2.00.fits'.format(apodization),
+                       field=field)
+    if mask_sources:
+        smask = hp.read_map(data_path + 'HFI_Mask_PointSrc_2048_R2.00.fits')
+        mask *= smask
+
+    return mask
         
