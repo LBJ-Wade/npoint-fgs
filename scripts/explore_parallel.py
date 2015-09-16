@@ -39,10 +39,6 @@ def wig3j(l1, l2, l3, m1, m2, m3):
     return wig3jj_c(l1*2, l2*2, l3*2,
                     m1*2, m2*2, m3*2)
                   
-
-#print(wig3j(3,4,5,0,0,0))
-#sys.exit()
-
 # Use default communicator. No need to complicate things.
 COMM = MPI.COMM_WORLD
 
@@ -54,27 +50,29 @@ def split(container, count):
     """
     return [container[_i::count] for _i in range(count)]
 
-lmax = 2
 
-from explore import get_TEB_prerequisites,get_prerequisites
+#########
+#########
+lmax = 100
+frequency = 143
+########
+########
+
+from explore import get_hs,observe_alms#, get_Tlm,get_ElmBlm
 import healpy as hp
 
+hs = get_hs('hs_lmax100.npy')
+Tlm,Elm,Blm = observe_alms(filetag='test{}'.format(frequency),
+                           frequency=frequency,simulate=False,
+                           lmax_save=lmax)
 
-#Imap, Qmap, Umap = hp.read_map( '/Users/verag/Research/Repositories/npoint-fgs/data/noisesim_353.fits'.format(mapname),field=(0,1,2) )
-#Tlm, Elm, Blm, ls, ms, hs = get_TEB_prerequisites(maps=[Imap, Qmap, Umap],
-#                                                  lmax=lmax,
-#                                                  Imap_label='noisesim353')
+#Tlm = get_Tlm('Tlm_lmax{}_test143.npy'.format(lmax))
+#Elm,Blm = get_ElmBlm('ElmBlm_lmax{}_test143.npy'.format(lmax))
 
+#N = len(Tlm)
+N = lmax
 
-#Imap, Qmap, Umap = hp.read_map( '../data/noisesim_353.fits',field=(0,1,2) )
-
-#Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax,
-#                                      Imap_label='143',Pmap_label='143')
-
-Tlm, Elm, Blm, hs = get_prerequisites(lmax=lmax,
-                                      almfilename='alms_lmax2_mask_PowerSpectra__noisesim353.npy')
-
-N = len(Tlm)
+#sys.exit()
 
 if COMM.rank == 0:
     ns = range(N)
@@ -86,29 +84,11 @@ else:
 # Scatter jobs across cores.
 ns = COMM.scatter(ns, root=0)
 
-@jit#(nopython=True)
-def inner_loops_old(i, bispectrum, Tlm, Elm, Blm, ls, ms, hs):
-    """
-    i is index into lm-style arrays, bispectrum is
-    (lmax+1)^3 array 
-    """
-    l1 = ls[i]
-    m1 = ms[i]
-    for j in range(N):
-        l2 = ls[j]
-        m2 = ms[j]
-        for k in range(N):
-            l3 = ls[k] 
-            m3 = ms[k]
-            if hs[l1, l2, l3] != 0.:
-                bispectrum[l1, l2, l3] += (wig3j(l1, l2, l3, m1, m2, m3) *
-                                      Tlm[i] * Elm[j] * Blm[k]) / hs[l1, l2, l3]
 
 @jit#(nopython=True)
 def inner_loops(i, bispectrum, Tlm, Elm, Blm, hs):
     """
-    i is index into lm-style arrays, bispectrum is
-    (lmax+1)^3 array 
+    bispectrum is (lmax+1)^3 array 
     """
     l1 = i
     m1s = np.arange(-l1, l1+1)
@@ -123,12 +103,10 @@ def inner_loops(i, bispectrum, Tlm, Elm, Blm, hs):
                             bispectrum[l1, l2, l3] += (wig3j(l1, l2, l3, m1, m2, m3) *
                                                         Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3]) / hs[l1, l2, l3]
 #initialize bispectrum to be empty
-#bispectrum = np.zeros((lmax+1,lmax+1,lmax+1))
 bispectrum = np.zeros((lmax+1,lmax+1,lmax+1), dtype=complex)
 
 for i in ns:
-    #print('on rank {}: i={}'.format(COMM.rank, i))
-    #inner_loops_old(i, bispectrum, Tlm.real, Elm.real, Blm.real, ls, ms, hs)
+    print('on rank {}: i={}'.format(COMM.rank, i))
     inner_loops(i, bispectrum, Tlm, Elm, Blm, hs)
 
 # Gather results on rank 0.
@@ -136,9 +114,7 @@ bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    np.save('bispectrum_noisetest143_lmax{}.npy'.format(lmax),bispectrum)
-    #print(bispectrum.shape)
-    #print(bispectrum.mean(), bispectrum.std())
+    np.save('bispectrum_test143_lmax{}.npy'.format(lmax),bispectrum)
 
 
 _libwigxjpf.wig_temp_free()
