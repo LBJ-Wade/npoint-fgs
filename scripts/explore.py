@@ -978,14 +978,14 @@ def get_Tlm(filename='test_tlm.npy',
             Imap=None, mask=None,
             add_beam=None,div_beam=None,
             healpy_format=False,
-            lmax=100, recalc=True,
+            lmax=100, recalc=False,
             filtermap=False, l0=None,
             save=False):
     """computes and saves 2d alms from a given
     map and mask, corrected for sqrt(fsky), beams added or divided by choice.
     """
     if not recalc and os.path.exists(data_path + filename):
-        Tlm2d = np.load(data_path + filename, 'r')
+        Tlm2d = np.load(data_path + filename)
         return Tlm2d
     fsky = mask.sum() / len(mask)
     Tlm = hp.map2alm(Imap * mask, lmax=lmax) / np.sqrt(fsky)
@@ -996,7 +996,7 @@ def get_Tlm(filename='test_tlm.npy',
 
     if not healpy_format:
         ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Tlm)))
-        Tlm = make2d_alm(Tlm, lmax, ls, ms)
+        Tlm = make2d_alm_square(Tlm, lmax, ls, ms)
     if save:
         np.save(data_path + filename, Tlm)
     return Tlm
@@ -1005,14 +1005,14 @@ def get_ElmBlm(filename='test_elmblm.npy',
                Qmap=None, Umap=None, mask=None,
                lmax=100,add_beam=None,div_beam=None,
                healpy_format=False,
-               recalc=True,
+               recalc=False,
                filtermap=False, l0=None,
                save=False):
     """computes and saves 2d (Elms, Blms) from given
     Q and U maps, corrected for sqrt(fsky)
     """
     if not recalc and os.path.exists(data_path + filename):
-        Elm2d, Blm2d = np.load(data_path + filename, 'r')
+        Elm2d, Blm2d = np.load(data_path + filename)
         return Elm2d, Blm2d
     fsky = mask.sum() / len(mask)
     Elm, Blm = hp.map2alm_spin( (Qmap*mask,Umap*mask), 2, lmax=lmax )
@@ -1026,8 +1026,8 @@ def get_ElmBlm(filename='test_elmblm.npy',
         hp.sphtfunc.almxfl(Blm, 1./div_beam, inplace=True)
     if not healpy_format:
         ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Elm)))
-        Elm = make2d_alm(Elm, lmax, ls, ms)
-        Blm = make2d_alm(Blm, lmax, ls, ms)
+        Elm = make2d_alm_square(Elm, lmax, ls, ms)
+        Blm = make2d_alm_square(Blm, lmax, ls, ms)
     if save:
         np.save(data_path + filename, [Elm,Blm])
     return Elm, Blm
@@ -1258,7 +1258,7 @@ def check_cl_sims(nmaps=1,lmax=1000,nside=2048,
 
 def observe_cmb_sky(save=False, filename='testsky.fits',
                     nside=2048, npix=None, lmax=3000,
-                    frequency=100, beam=None, beamP=None,
+                    frequency=100, beam=None, beamP=None,smear=True,
                     cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
 
     if npix is None:
@@ -1267,7 +1267,7 @@ def observe_cmb_sky(save=False, filename='testsky.fits',
         nside = hp.npix2nside(npix)
         
     Tcmb, Qcmb, Ucmb = simulate_cmb(nside=nside, lmax=lmax,
-                                frequency=frequency,smear=True,
+                                frequency=frequency,smear=smear,
                                 nomap=False, save=False,
                                 beam=beam, beamP=beamP,
                                 cl_file=cl_file)
@@ -1283,43 +1283,60 @@ def observe_cmb_sky(save=False, filename='testsky.fits',
 
 
 def observe_alms(save=True, filetag='test',
+                 lmax_save=100, div_beam=None, add_beam=None,
                      mask=None,mask_percentage=60,mask_sources=True,
-                     apodization='0',
+                     apodization='0',healpy_format=False,
                     nside=2048, npix=None, lmax=3000,
                     frequency=100, beam=None, beamP=None,
-                    simulation=True,return_alms=True,
+                    simulate=True,return_alms=True,
+                    recalc=False,
                     cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
 
+    Tlm = None
+    Blm = None
+    Elm = None
+    
+    if save:
+        Pfilename = 'ElmBlm_{}.npy'.format(filetag)
+        Tfilename = 'Tlm_{}.npy'.format(filetag)
+        if os.path.exists(data_path + Pfilename) and not recalc:
+            Elm, Blm = get_ElmBlm(filename=Pfilename, recalc=False)
+        if os.path.exists(data_path + Tfilename) and not recalc:
+            Tlm = get_Tlm(filename=Tfilename, recalc=False)
+    if (Tlm is not None) and (Elm is not None) and (Blm is not None):
+        if return_alms:
+            return Tlm, Elm, Blm
+        else:
+            return
+    
     if mask is None:
         mask = get_mask(mask_percentage=mask_percentage,
                         mask_sources=mask_sources,
                         apodization=apodization)
 
-    if simulation:
+    if simulate:
+        print 'simulating observed CMB sky...'
         Imap, Qmap, Umap = observe_cmb_sky(save=False,
                     nside=nside, npix=None, lmax=lmax,
                     frequency=frequency,
                     cl_file=cl_file)
     else:
         mapname = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+        print 'reading map from file: {} ...'.format(mapname)
         Imap, Qmap, Umap = hp.read_map(data_path + mapname, field=(0,1,2))
 
-    if save:
-        Pfilename = data_path + 'ElmBlm_{}.npy'.format(filetag)
-        Tfilename = data_path + 'Tlm_{}.npy'.format(filetag)
-        
     Elm, Blm = get_ElmBlm(filename=Pfilename,
                             Qmap=Qmap, Umap=Umap, mask=mask,
-                            lmax=lmax,add_beam=None,div_beam=None,
-                            healpy_format=False,
+                            lmax=lmax_save,add_beam=add_beam,div_beam=div_beam,
+                            healpy_format=healpy_format,
                             recalc=recalc,
                             filtermap=False, l0=None,
                             save=save)
 
     Tlm = get_Tlm(filename=Tfilename,
                             Imap=Imap, mask=mask,
-                            lmax=lmax,add_beam=None,div_beam=None,
-                            healpy_format=False,
+                            lmax=lmax_save,add_beam=add_beam,div_beam=div_beam,
+                            healpy_format=healpy_format,
                             recalc=recalc,
                             filtermap=False, l0=None,
                             save=save)
@@ -1330,8 +1347,14 @@ def observe_alms(save=True, filetag='test',
     
 
 MASK_FIELD = {
+    20: 0,
+    40: 1,
     60: 2,
-
+    70: 3,
+    80: 4,
+    90: 5,
+    97: 6,
+    99: 7,
 }
 
 def get_mask(mask_percentage=60,
