@@ -29,8 +29,8 @@ from numba import jit
 from scipy.special import sph_harm
 
 
-#data_path = '/home/verag/Projects/Repositories/npoint-fgs/data/'
-data_path = '/Users/verag/Research/Repositories/npoint-fgs/data/'
+data_path = '/data/verag/foregrounds/data/'
+#data_path = '/Users/verag/Research/Repositories/npoint-fgs/data/'
 
 def prepare_map(mapname='HFI_SkyMap_143_2048_R2.02_full.fits',
                 maskname='HFI_Mask_GalPlane-apo0_2048_R2.00.fits',

@@ -54,7 +54,7 @@ def split(container, count):
 #########
 #########
 lmax = 100
-frequency = 143
+frequency = 353
 ########
 ########
 
@@ -86,7 +86,7 @@ ns = COMM.scatter(ns, root=0)
 
 
 @jit#(nopython=True)
-def inner_loops(i, bispectrum, Tlm, Elm, Blm, hs):
+def inner_loops(i, bispectrum):
     """
     bispectrum is (lmax+1)^3 array 
     """
@@ -100,22 +100,24 @@ def inner_loops(i, bispectrum, Tlm, Elm, Blm, hs):
                 for m2 in m2s:
                     for m3 in m3s:  
                         if hs[l1, l2, l3] != 0. and m1 + m2 + m3 == 0:
-                            bispectrum[l1, l2, l3] += (wig3j(l1, l2, l3, m1, m2, m3) *
-                                                        Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3]) / hs[l1, l2, l3]
+                            #if m1 + m2 + m3 == 0:
+                            bispectrum[l1, l2, l3] += wig3j(l1, l2, l3, m1, m2, m3) * Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3] #/ hs[l1, l2, l3]
+                        #bispectrum[l1, l2, l3] +=  1.#1./ hs[l1, l2, l3] #Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3] / hs[l1, l2, l3]
 #initialize bispectrum to be empty
 bispectrum = np.zeros((lmax+1,lmax+1,lmax+1), dtype=complex)
 
 for i in ns:
     print('on rank {}: i={}'.format(COMM.rank, i))
-    inner_loops(i, bispectrum, Tlm, Elm, Blm, hs)
+    #inner_loops(i, bispectrum, Tlm, Elm, Blm)
+    inner_loops(i, bispectrum)
 
 # Gather results on rank 0.
 bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    np.save('bispectrum_test143_lmax{}.npy'.format(lmax),bispectrum)
+    np.save('bispectrum_test353_lmax{}.npy'.format(lmax),bispectrum)
 
 
-_libwigxjpf.wig_temp_free()
-_libwigxjpf.wig_table_free()
+#_libwigxjpf.wig_temp_free()
+#_libwigxjpf.wig_table_free()
