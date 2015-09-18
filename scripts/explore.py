@@ -405,6 +405,7 @@ def calc_hs(Fks, lmin=0, lmax=100):
 
 def plot_bispectrum(b,slices=None,title=None,logplot=True,filename=None):
 
+    
     if logplot:
         y = np.log10( np.abs(b) )
     else:
@@ -412,8 +413,9 @@ def plot_bispectrum(b,slices=None,title=None,logplot=True,filename=None):
   
     #ypositive = np.zeros(b.shape)
     #ynegative = np.zeros(b.shape)
-    #ypositive[ b > 0. ] = np.abs( y[ b > 0. ] )
-    #ynegative[ b < 0. ] = -1.*np.abs( y[ b < 0. ] )
+    #ypositive[ b > 0. ] = np.log(np.abs( b[ b > 0. ] ))
+    #ynegative[ b < 0. ] = -1.*np.log(np.abs( b[ b < 0. ] ))
+    #y=ypositive+ynegative
     #return ypositive,ynegative
     
     if slices is None:
@@ -757,7 +759,12 @@ def get_prerequisites(maps=None,
     return Tlm,Elm,Blm,hs
 
 
-
+######
+######
+######
+#####
+###
+#
 
 def make2d_alm(alm, lmax, ls, ms):
     
@@ -1289,20 +1296,20 @@ def observe_alms(save=True, filetag='test',
                     nside=2048, npix=None, lmax=3000,
                     frequency=100, beam=None, beamP=None,
                     simulate=True,return_alms=True,
-                    recalc=False,
+                    recalc=False,smear=True,
                     cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
 
     Tlm = None
     Blm = None
     Elm = None
-    
-    if save:
-        Pfilename = 'ElmBlm_{}.npy'.format(filetag)
-        Tfilename = 'Tlm_{}.npy'.format(filetag)
-        if os.path.exists(data_path + Pfilename) and not recalc:
-            Elm, Blm = get_ElmBlm(filename=Pfilename, recalc=False)
-        if os.path.exists(data_path + Tfilename) and not recalc:
-            Tlm = get_Tlm(filename=Tfilename, recalc=False)
+
+
+    Pfilename = 'ElmBlm_{}.npy'.format(filetag)
+    Tfilename = 'Tlm_{}.npy'.format(filetag)
+    if os.path.exists(data_path + Pfilename) and not recalc:
+        Elm, Blm = get_ElmBlm(filename=Pfilename, recalc=False)
+    if os.path.exists(data_path + Tfilename) and not recalc:
+        Tlm = get_Tlm(filename=Tfilename, recalc=False)
     if (Tlm is not None) and (Elm is not None) and (Blm is not None):
         if return_alms:
             return Tlm, Elm, Blm
@@ -1318,8 +1325,8 @@ def observe_alms(save=True, filetag='test',
         print 'simulating observed CMB sky...'
         Imap, Qmap, Umap = observe_cmb_sky(save=False,
                     nside=nside, npix=None, lmax=lmax,
-                    frequency=frequency,
-                    cl_file=cl_file)
+                    frequency=frequency,beam=beam,beamP=beamP,
+                    cl_file=cl_file,smear=smear)
     else:
         mapname = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
         print 'reading map from file: {} ...'.format(mapname)

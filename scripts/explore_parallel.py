@@ -54,7 +54,9 @@ def split(container, count):
 #########
 #########
 lmax = 100
-frequency = 143
+frequency = 353
+
+#assert type(id) is IntType, "id is not an integer: %r" % id
 ########
 ########
 
@@ -114,7 +116,7 @@ bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    np.save('bispectrum_test143_lmax{}.npy'.format(lmax),bispectrum)
+    np.save('bispectrum_test353_lmax{}.npy'.format(lmax),bispectrum)
 
 
 _libwigxjpf.wig_temp_free()
