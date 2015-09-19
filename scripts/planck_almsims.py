@@ -10,7 +10,7 @@ infilename = FGS_SIM_PATH + 'cmb_alms/' + '{}_alm_planck.npz'.format(filebase)
 smear = True
 save = False
 nside=2048
-lmax = 3000
+lmax = 4000
 lmax_bis = 100
 
 mask = get_planck_mask(mask_percentage=60,
