@@ -40,8 +40,8 @@ except KeyError:
 FGS_SIM_PATH = FGS_PATH + 'sims/'
 FGS_RESULTS_PATH = FGS_PATH + 'results/'
 
-if not os.path.exists(FGS_SIMS_PATH):
-    os.mkdir(FGS_SIMS_PATH)
+if not os.path.exists(FGS_SIM_PATH):
+    os.mkdir(FGS_SIM_PATH)
 if not os.path.exists(FGS_RESULTS_PATH):
     os.mkdir(FGS_RESULTS_PATH)
     
