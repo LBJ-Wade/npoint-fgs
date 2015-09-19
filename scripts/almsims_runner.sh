@@ -3,4 +3,7 @@
 #$ -cwd
 #$ -t 1-100
 #$ -V
+#$ -o runs/
+#$ -e runs/
+
 python simulate_alms.py sim$SGE_TASK_ID

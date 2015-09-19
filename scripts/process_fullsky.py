@@ -174,12 +174,12 @@ def L_dot_rand_map(L,rand_I,rand_Q,rand_U,npix):
         Umap[i] = L[i][2,0] * rand_I[i] + L[i][2,1] * rand_Q[i] + L[i][2,2] * rand_U[i]
     return Imap, Qmap, Umap
 
-def simulate_cmb_alms(almfile=FGS_SIM_PATH+'cmb_alms/alm.npy', nside=2048, lmax=4000,
+def simulate_cmb_alms(almfile=FGS_SIM_PATH+'cmb_alms/alm', nside=2048, lmax=4000,
                         cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
         
     ls, cltt, clte, clee, clbb = get_theory_cls(lmax=lmax, cl_file=cl_file)
     Tlm, Elm, Blm = hp.synalm( (cltt, clee, clbb, clte), new=True, lmax=lmax)
-    np.save(almfile, [Tlm,Elm,Blm])
+    np.savez(almfile, Tlm=Tlm, Elm=Elm, Blm=Blm)
     return Tlm, Elm, Blm
 
 def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lmax=3000,
@@ -189,10 +189,11 @@ def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lma
                  beam_file=PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits'):
         
     
-    Tlm, Elm, Blm = np.load(almfile)
-    Tlm = Tlm[:lmax+1]
-    Elm = Elm[:lmax+1]
-    Blm = Blm[:lmax+1]
+    d = np.load(almfile)
+    
+    Tlm = d['Tlm'][:lmax+1]
+    Elm =  d['Elm'][:lmax+1]
+    Blm =  d['Blm'][:lmax+1]
     
     if smear:
         if (beam is None) or (beamP is None) :
