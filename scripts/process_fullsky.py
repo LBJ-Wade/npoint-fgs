@@ -238,7 +238,7 @@ def simulate_observed_cmb(return_components=False,
                           save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
                             nside=2048, npix=None, lmax=3000,experiment='planck',
                             frequency=100, beam=None, beamP=None,smear=True,
-                            almfile=FG_SIM_PATH+'cmb_sims/simalm.npy'):
+                            almfile=FGS_SIM_PATH+'cmb_sims/simalm.npy'):
 
     if npix is None:
         npix = hp.nside2npix(nside)
