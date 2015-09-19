@@ -20,7 +20,7 @@ mask = get_planck_mask(mask_percentage=60,
 
 for f in frequencies:
     outfilename = FGS_SIM_PATH + 'planck_bispectrum_alms/' + '{}_planck_{}GHz'.format(filebase,f)
-    I,Q,U = simulate_observed_cmb(frequency=f, almfile=infile,
+    I,Q,U = simulate_observed_cmb(frequency=f, almfile=infilename,
                       smear=smear, save=save, experiment='planck',
                       nside=nside, npix=None, lmax=lmax)
     Tlm,Elm,Blm = calc_alm(I, Q, U, mask=mask,
