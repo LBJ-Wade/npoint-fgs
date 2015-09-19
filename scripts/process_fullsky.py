@@ -203,7 +203,7 @@ def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lma
         hp.sphtfunc.almxfl(Blm, beamP, inplace=True)
 
     Tmap = hp.alm2map( Tlm, nside, verbose=False )
-    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax, verbose=False)
+    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
 
     if save:
         hp.write_map([Tmap,Qmap,Umap], filename)
