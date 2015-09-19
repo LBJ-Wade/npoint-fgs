@@ -55,6 +55,9 @@ def split(container, count):
 #########
 lmax = 100
 frequency = 353
+
+#assert type(id) is IntType, "id is not an integer: %r" % id
+
 ########
 ########
 
