@@ -11,7 +11,7 @@ import argparse
 from numba import jit
 
 from spherical_geometry import get_hs
-from process_fullsky import FGS_SIM_PATH
+from process_fullsky import FGS_SIM_PATH, FGS_RESULTS_PATH
 
 alms_sims_path = FGS_SIM_PATH + 'planck_bispectrum_alms/'
 
@@ -29,6 +29,7 @@ parser.add_argument('--filename',default='bispectrumtest.npy')
 args = parser.parse_args()
 LMAX = args.lmax
 
+filename = FGS_RESULTS_PATH + 'bispectra/' + args.filename
 
 # fetch alms:
 alm1 = np.load(alms_sims_path+args.alm1)
@@ -129,7 +130,7 @@ bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    np.save(args.filename,bispectrum)
+    np.save(filename,bispectrum)
 
 
 #_libwigxjpf.wig_temp_free()
