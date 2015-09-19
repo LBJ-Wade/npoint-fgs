@@ -23,7 +23,7 @@ import healpy as hp
 import os
 import scipy
 from numba import jit
-
+from planck_data_info import *
 
 def get_Fk(J, filename='Fks_1000.txt'):
     Ftable = np.loadtxt(filename)

@@ -1,6 +1,38 @@
+import numpy as np
+import pylab as pl
+
+import matplotlib
+if __name__=='__main__':
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from astropy.io import fits
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib as mpl
+import matplotlib.patheffects as PathEffects
+import matplotlib.gridspec as gridspec
+import glob
+from matplotlib import rc
+rc('font',**{'family':'serif','serif':['Times','Palatino']})
+rc('text', usetex=True)
+mpl.rcParams['xtick.major.size']=8
+mpl.rcParams['ytick.major.size']=8
+mpl.rcParams['xtick.labelsize']=18
+mpl.rcParams['ytick.labelsize']=18
+
+import healpy as hp
+import os
+import scipy
+from numba import jit
+
+from planck_data_info import *
+
+try:
+    PLANCK_DATA_PATH = os.environ['PLANCK_DATA_PATH']
+except KeyError:
+    logging.warning('PLANCK_DATA_PATH environment variable not defined, I will not be able to find input maps!')
 
 
-
+from planck_data_info import *
 
 
 def cl_alm2d(alm1=None, alm2=None, lmax=100):
@@ -20,20 +52,20 @@ def cl_alm2d(alm1=None, alm2=None, lmax=100):
 
 
 
-def check_Tlm2d(nu=100, lmax=300,
+def check_Tlm2d(nu=100, lmax=300,experiment='planck',
                 maskfield=2, source_maskfield=0,
                 label_loc='lower right', xmax=None):
-    
-    Imap_name = 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
-    Imap =hp.read_map(data_path + Imap_name)
-    mask=hp.read_map(data_path + 'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
+    if experiment=='planck':
+        Imap_name = PLANCK_DATA_PATH+'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(nu)
+    Imap =hp.read_map(Imap_name)
+    mask=hp.read_map(PLANCK_DATA_PATH+'HFI_Mask_GalPlane-apo0_2048_R2.00.fits',
                      field=maskfield)
-    smask=hp.read_map(data_path + 'HFI_Mask_PointSrc_2048_R2.00.fits',
+    smask=hp.read_map(PLANCK_DATA_PATH+'HFI_Mask_PointSrc_2048_R2.00.fits',
                      field=source_maskfield)
     mask *= smask
 
-    hdulist = fits.open(data_path + 'HFI_RIMO_Beams-100pc_R2.00.fits')
-    beam = hdulist[beam_index['{}'.format(nu)]].data.NOMINAL[0][:lmax+1]
+    hdulist = fits.open(PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits')
+    beam = hdulist[BEAM_INDEX['{}'.format(nu)]].data.NOMINAL[0][:lmax+1]
     
     tlm = get_Tlm(lmax=lmax, Imap=Imap, mask=mask,
                   healpy_format=False, recalc=True, div_beam=beam)

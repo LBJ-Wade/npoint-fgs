@@ -53,8 +53,8 @@ def split(container, count):
  
 #########
 #########
-lmax = 100
-frequency = 353
+lmax = 5
+frequency = 100
 
 #assert type(id) is IntType, "id is not an integer: %r" % id
 
@@ -88,7 +88,7 @@ else:
 ns = COMM.scatter(ns, root=0)
 
 
-@jit#(nopython=True)
+@jit(nopython=True)
 def inner_loops(i, bispectrum):
     """
     bispectrum is (lmax+1)^3 array 
@@ -104,7 +104,7 @@ def inner_loops(i, bispectrum):
                     for m3 in m3s:  
                         if hs[l1, l2, l3] != 0. and m1 + m2 + m3 == 0:
                             #if m1 + m2 + m3 == 0:
-                            bispectrum[l1, l2, l3] += wig3j(l1, l2, l3, m1, m2, m3) * Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3] #/ hs[l1, l2, l3]
+                            bispectrum[l1, l2, l3] += wig3j(l1, l2, l3, m1, m2, m3) * Tlm[l1,m1] * Elm[l2,m2] * Blm[l3,m3] #/ hs[l1, l2, l3]
                         #bispectrum[l1, l2, l3] +=  1.#1./ hs[l1, l2, l3] #Tlm[l1][m1] * Elm[l2][m2] * Blm[l3][m3] / hs[l1, l2, l3]
 #initialize bispectrum to be empty
 bispectrum = np.zeros((lmax+1,lmax+1,lmax+1), dtype=complex)

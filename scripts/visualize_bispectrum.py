@@ -23,6 +23,7 @@ import healpy as hp
 import os
 import scipy
 from numba import jit
+from planck_data_info import *
     
 def plot_bispectrum(b,slices=None,title=None,logplot=True,filename=None):
 

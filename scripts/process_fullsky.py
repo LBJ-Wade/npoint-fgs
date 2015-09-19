@@ -24,6 +24,8 @@ import os
 import scipy
 from numba import jit
 
+from planck_data_info import *
+
 try:
     PLANCK_DATA_PATH = os.environ['PLANCK_DATA_PATH']
 except KeyError:
@@ -81,63 +83,34 @@ def make2d_alm_square(alm, lmax, ls, ms):
     return alm2d
 
 
-def get_Tlm(filename=FGS_SIM_PATH+'test_tlm.npy',
-            Imap=None, mask=None,
-            add_beam=None,div_beam=None,
-            healpy_format=False,
-            lmax=100, recalc=False,
-            filtermap=False, l0=None,
-            save=False):
-    """computes and saves 2d alms from a given
-    map and mask, corrected for sqrt(fsky), beams added or divided by choice.
-    """
-    if not recalc and os.path.exists(data_path + filename):
-        Tlm2d = np.load(data_path + filename)
-        return Tlm2d
-    fsky = mask.sum() / len(mask)
-    Tlm = hp.map2alm(Imap * mask, lmax=lmax) / np.sqrt(fsky)
-    if add_beam is not None:
-        hp.sphtfunc.almxfl(Tlm, add_beam, inplace=True)
-    if div_beam is not None:
-        hp.sphtfunc.almxfl(Tlm, 1./div_beam, inplace=True)
-
-    if not healpy_format:
-        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Tlm)))
-        Tlm = make2d_alm_square(Tlm, lmax, ls, ms)
-    if save:
-        np.save(filename, Tlm)
-    return Tlm
-
-def get_ElmBlm(filename=FGS_SIM_PATH+'test_elmblm.npy',
-               Qmap=None, Umap=None, mask=None,
+def calc_alm(Imap, Qmap, Umap, mask=None,
                lmax=100,add_beam=None,div_beam=None,
                healpy_format=False,
-               recalc=False,
                filtermap=False, l0=None,
                save=False):
-    """computes and saves 2d (Elms, Blms) from given
-    Q and U maps, corrected for sqrt(fsky)
+    """computes alms, given
+    maps and a mask, corrected for sqrt(fsky), optionally corrected for beams
     """
-    if not recalc and os.path.exists(data_path + filename):
-        Elm2d, Blm2d = np.load(data_path + filename)
-        return Elm2d, Blm2d
     fsky = mask.sum() / len(mask)
+    Tlm = hp.map2alm(Imap * mask, lmax=lmax) / np.sqrt(fsky)
     Elm, Blm = hp.map2alm_spin( (Qmap*mask,Umap*mask), 2, lmax=lmax )
     Elm /= np.sqrt(fsky)
     Blm /= np.sqrt(fsky)
     if add_beam is not None:
+        hp.sphtfunc.almxfl(Tlm, add_beam, inplace=True)
         hp.sphtfunc.almxfl(Elm, add_beam, inplace=True)
         hp.sphtfunc.almxfl(Blm, add_beam, inplace=True)
     if div_beam is not None:
+        hp.sphtfunc.almxfl(Tlm, 1./div_beam, inplace=True)
         hp.sphtfunc.almxfl(Elm, 1./div_beam, inplace=True)
         hp.sphtfunc.almxfl(Blm, 1./div_beam, inplace=True)
     if not healpy_format:
-        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Elm)))
+        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(alm)))
+        Tlm = make2d_alm_square(Tlm, lmax, ls, ms)
         Elm = make2d_alm_square(Elm, lmax, ls, ms)
         Blm = make2d_alm_square(Blm, lmax, ls, ms)
-    if save:
-        np.save(filename, [Elm,Blm])
-    return Elm, Blm
+
+    return Tlm,Elm,Blm
 
 
 
@@ -201,18 +174,25 @@ def L_dot_rand_map(L,rand_I,rand_Q,rand_U,npix):
         Umap[i] = L[i][2,0] * rand_I[i] + L[i][2,1] * rand_Q[i] + L[i][2,2] * rand_U[i]
     return Imap, Qmap, Umap
 
-
-def simulate_cmb(nside=2048, lmax=3000,
-                 frequency=100,smear=False,
-                 nomap = False, beam=None, beamP=None,
-                 save=False, filename=FGS_SIM_PATH+'testcmb.fits',
-                 beam_file=PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits',
-                 cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+def simulate_cmb_alms(almfile=FGS_SIM_PATH+'cmb_alms/alm.npy', nside=2048, lmax=4000,
+                        cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
         
     ls, cltt, clte, clee, clbb = get_theory_cls(lmax=lmax, cl_file=cl_file)
- 
     Tlm, Elm, Blm = hp.synalm( (cltt, clee, clbb, clte), new=True, lmax=lmax)
+    np.save(almfile, [Tlm,Elm,Blm])
+    return Tlm, Elm, Blm
 
+def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lmax=3000,
+                 frequency=100,smear=False,
+                 beam=None, beamP=None,
+                 save=False, filename=FGS_SIM_PATH+'testcmb.fits',
+                 beam_file=PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits'):
+        
+    
+    Tlm, Elm, Blm = np.load(almfile)
+    Tlm = Tlm[:lmax+1]
+    Elm = Elm[:lmax+1]
+    Blm = Blm[:lmax+1]
     
     if smear:
         if (beam is None) or (beamP is None) :
@@ -223,9 +203,6 @@ def simulate_cmb(nside=2048, lmax=3000,
         hp.sphtfunc.almxfl(Elm, beamP, inplace=True)
         hp.sphtfunc.almxfl(Blm, beamP, inplace=True)
 
-    if nomap:
-        return Tlm,Elm,Blm
-    
     Tmap = hp.alm2map( Tlm, nside )
     Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
 
@@ -257,21 +234,22 @@ def get_theory_cls(lmax=3000,
     return ls, cltt, clte, clee, clbb
 
 
-def simulate_observed_cmb(save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
-                    nside=2048, npix=None, lmax=3000,experiment='planck'
-                    frequency=100, beam=None, beamP=None,smear=True,
-                    cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+def simulate_observed_cmb(return_components=False,
+                          save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
+                            nside=2048, npix=None, lmax=3000,experiment='planck'
+                            frequency=100, beam=None, beamP=None,smear=True,
+                            almfile=PLANCK_SIM_PATH+'cmb_sims/simalm.npy'):
 
     if npix is None:
         npix = hp.nside2npix(nside)
     if nside is None:
         nside = hp.npix2nside(npix)
         
-    Tcmb, Qcmb, Ucmb = simulate_cmb(nside=nside, lmax=lmax,
+    Tcmb, Qcmb, Ucmb = simulate_cmb_map(nside=nside, lmax=lmax,
                                 frequency=frequency,smear=smear,
                                 nomap=False, save=False,
                                 beam=beam, beamP=beamP,
-                                cl_file=cl_file)
+                                almfile=almfile)
     Tnoise, Qnoise, Unoise = simulate_noise(npix=npix,experiment=experiment,
                                             frequency=frequency,
                                             save=False)
@@ -279,72 +257,10 @@ def simulate_observed_cmb(save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
     if save:
         hp.write_map(filename, [Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise])
 
+    if return_components:
+        return Tcmb,Tnoise, Qcmb,Qnoise, Ucmb,Unoise
     return Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise
 
-
-
-def observe_alms(save=True, filetag='test',experiment='planck',
-                 lmax_save=100, div_beam=None, add_beam=None,
-                     mask=None,mask_percentage=60,mask_sources=True,
-                     apodization='0',healpy_format=False,
-                    nside=2048, npix=None, lmax=3000,
-                    frequency=100, beam=None, beamP=None,
-                    simulate=True,return_alms=True,
-                    recalc=False,smear=True, mapname=None,
-                    cl_file='bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
-
-    Tlm = None
-    Blm = None
-    Elm = None
-
-    Pfilename = simpath + 'ElmBlm_{}.npy'.format(filetag)
-    Tfilename = simpath + 'Tlm_{}.npy'.format(filetag)
-    
-    if os.path.exists(Pfilename) and not recalc:
-        Elm, Blm = get_ElmBlm(Pfilename, recalc=False)
-    if os.path.exists(Tfilename) and not recalc:
-        Tlm = get_Tlm(filename=Tfilename, recalc=False)
-    if (Tlm is not None) and (Elm is not None) and (Blm is not None):
-        if return_alms:
-            return Tlm, Elm, Blm
-        else:
-            return
-    
-    if mask is None:
-        mask = get_planck_mask(mask_percentage=mask_percentage,
-                        mask_sources=mask_sources,
-                        apodization=apodization)
-
-    if simulate:
-        print 'simulating observed CMB sky...'
-        Imap, Qmap, Umap = simulate_observed_cmb(save=False,
-                    nside=nside, npix=None, lmax=lmax,experiment=experiment,
-                    frequency=frequency,beam=beam,beamP=beamP,
-                    cl_file=cl_file,smear=smear)
-    else:
-        if mapname = None:
-            mapname = PLANCK_DATA_PATH + 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
-        print 'reading map from file: {} ...'.format(mapname)
-        Imap, Qmap, Umap = hp.read_map(mapname, field=(0,1,2))
-
-    Elm, Blm = get_ElmBlm(filename=Pfilename,
-                            Qmap=Qmap, Umap=Umap, mask=mask,
-                            lmax=lmax_save,add_beam=add_beam,div_beam=div_beam,
-                            healpy_format=healpy_format,
-                            recalc=recalc,
-                            filtermap=False, l0=None,
-                            save=save)
-
-    Tlm = get_Tlm(filename=Tfilename,
-                            Imap=Imap, mask=mask,
-                            lmax=lmax_save,add_beam=add_beam,div_beam=div_beam,
-                            healpy_format=healpy_format,
-                            recalc=recalc,
-                            filtermap=False, l0=None,
-                            save=save)
-
-    if return_alms:
-        return Tlm,Elm,Blm
 
 
 def get_planck_mask(mask_percentage=60,
