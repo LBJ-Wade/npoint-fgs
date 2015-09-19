@@ -121,13 +121,12 @@ def get_cholesky(frequency=100, mapname=None,
         mapname = PLANCK_DATA_PATH + 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
     newname = mapname[:-5] + '_cholesky.npy'
     
-    if os.path.exists(data_path + newname) and not rewrite:
-        L = np.load(data_path + newname, 'r')
-        print 'found it! ({})'.format(data_path + newname)
+    if os.path.exists(newname) and not rewrite:
+        L = np.load(newname, 'r')
+        print 'found it! ({})'.format(newname)
         return L
 
-    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( data_path + mapname,
-                                                            field=(4,5,6,7,8,9) )
+    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( mapname,field=(4,5,6,7,8,9) )
     npix = len(covII)
     L = calc_cholesky_IQU(covII, covIQ, covIU, covQQ, covQU, covUU, npix)
     if save:
