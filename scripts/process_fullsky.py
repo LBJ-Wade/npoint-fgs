@@ -37,8 +37,8 @@ except KeyError:
     logging.warning('FGS_PATH environment variable not defined, defaulting to current working directory.')
     FGS_PATH = os.getcwd()
 
-FGS_SIM_PATH += '/sims/'
-FGS_RESULTS_PATH += '/results/'
+FGS_SIM_PATH = FGS_PATH + 'sims/'
+FGS_RESULTS_PATH = FGS_PATH + 'results/'
 
 if not os.path.exists(FGS_SIMS_PATH):
     os.mkdir(FGS_SIMS_PATH)
