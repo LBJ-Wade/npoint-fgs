@@ -86,8 +86,7 @@ def make2d_alm_square(alm, lmax, ls, ms):
 def calc_alm(Imap, Qmap, Umap, mask=None,
                lmax=100,add_beam=None,div_beam=None,
                healpy_format=False,
-               filtermap=False, l0=None,
-               save=False):
+               filtermap=False, l0=None):
     """computes alms, given
     maps and a mask, corrected for sqrt(fsky), optionally corrected for beams
     """
@@ -238,7 +237,7 @@ def simulate_observed_cmb(return_components=False,
                           save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
                             nside=2048, npix=None, lmax=3000,experiment='planck',
                             frequency=100, beam=None, beamP=None,smear=True,
-                            almfile=FGS_SIM_PATH+'cmb_sims/simalm.npy'):
+                            almfile=FGS_SIM_PATH+'cmb_sims/simalm.npz'):
 
     if npix is None:
         npix = hp.nside2npix(nside)
