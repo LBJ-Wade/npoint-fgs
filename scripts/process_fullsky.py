@@ -236,7 +236,7 @@ def get_theory_cls(lmax=3000,
 
 def simulate_observed_cmb(return_components=False,
                           save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
-                            nside=2048, npix=None, lmax=3000,experiment='planck'
+                            nside=2048, npix=None, lmax=3000,experiment='planck',
                             frequency=100, beam=None, beamP=None,smear=True,
                             almfile=PLANCK_SIM_PATH+'cmb_sims/simalm.npy'):
 
