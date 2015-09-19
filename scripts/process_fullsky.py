@@ -189,9 +189,9 @@ def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lma
     
     d = np.load(almfile)
     
-    Tlm = d['Tlm'][:lmax+1]
-    Elm =  d['Elm'][:lmax+1]
-    Blm =  d['Blm'][:lmax+1]
+    Tlm = d['Tlm']
+    Elm =  d['Elm']
+    Blm =  d['Blm']
     
     if smear:
         if (beam is None) or (beamP is None) :
@@ -203,7 +203,7 @@ def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lma
         hp.sphtfunc.almxfl(Blm, beamP, inplace=True)
 
     Tmap = hp.alm2map( Tlm, nside )
-    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
+    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2 )
 
     if save:
         hp.write_map([Tmap,Qmap,Umap], filename)
