@@ -8,8 +8,8 @@
 #$ -e runs/
 
 
-export ilo=`$[$[$SGE_TASK_ID - 1] * 25 + 1]`
-export ihi=`$[$ilo + 24]`
+export ilo=$[$[$SGE_TASK_ID - 1] * 25 + 1]
+export ihi=$[$ilo + 24]
 
 for i in `seq $ilo $ihi`;
 do 
