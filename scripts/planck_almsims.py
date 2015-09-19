@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import numpy as np
 from process_fullsky import PLANCK_DATA_PATH,FGS_SIM_PATH,simulate_observed_cmb,calc_alm,get_planck_mask
 
 frequencies = [100,143,353,217]
