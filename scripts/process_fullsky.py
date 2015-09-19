@@ -104,7 +104,7 @@ def calc_alm(Imap, Qmap, Umap, mask=None,
         hp.sphtfunc.almxfl(Elm, 1./div_beam, inplace=True)
         hp.sphtfunc.almxfl(Blm, 1./div_beam, inplace=True)
     if not healpy_format:
-        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(alm)))
+        ls, ms = hp.sphtfunc.Alm.getlm(lmax, np.arange(len(Tlm)))
         Tlm = make2d_alm_square(Tlm, lmax, ls, ms)
         Elm = make2d_alm_square(Elm, lmax, ls, ms)
         Blm = make2d_alm_square(Blm, lmax, ls, ms)
@@ -202,8 +202,8 @@ def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lma
         hp.sphtfunc.almxfl(Elm, beamP, inplace=True)
         hp.sphtfunc.almxfl(Blm, beamP, inplace=True)
 
-    Tmap = hp.alm2map( Tlm, nside )
-    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
+    Tmap = hp.alm2map( Tlm, nside, verbose=False )
+    Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax, verbose=False)
 
     if save:
         hp.write_map([Tmap,Qmap,Umap], filename)
