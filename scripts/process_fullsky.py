@@ -245,8 +245,7 @@ def simulate_observed_cmb(return_components=False,
         nside = hp.npix2nside(npix)
         
     Tcmb, Qcmb, Ucmb = simulate_cmb_map(nside=nside, lmax=lmax,
-                                frequency=frequency,smear=smear,
-                                nomap=False, save=False,
+                                frequency=frequency,smear=smear,save=False,
                                 beam=beam, beamP=beamP,
                                 almfile=almfile)
     Tnoise, Qnoise, Unoise = simulate_noise(npix=npix,experiment=experiment,
