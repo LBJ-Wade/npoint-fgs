@@ -24,9 +24,11 @@ for f in frequencies:
     I,Q,U = simulate_observed_cmb(frequency=f, almfile=infilename,
                       smear=smear, save=save, experiment='planck',
                       nside=nside, npix=None, lmax=lmax)
+    print 'simulated maps for {}, {} GHz'.format(filebase, f)
     Tlm,Elm,Blm = calc_alm(I, Q, U, mask=mask,
                         lmax=lmax_bis,add_beam=None,div_beam=None,
                         healpy_format=False)
+    print 'Calculated alms for {}, {} GHz'.format(filebase, f)
     np.save(outfilename + '_tlm.npy', Tlm)
     np.save(outfilename + '_elm.npy', Elm)
     np.save(outfilename + '_blm.npy', Blm)
