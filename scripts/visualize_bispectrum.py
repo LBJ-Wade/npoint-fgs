@@ -24,6 +24,7 @@ import os
 import scipy
 from numba import jit
 from planck_data_info import *
+from process_fullsky import FGS_RESULTS_PATH
     
 def plot_bispectrum(b,slices=None,title=None,logplot=True,filename=None):
 
@@ -67,3 +68,23 @@ def plot_slice_bispectrum(y, s=None, title='',
     pl.imshow(y[s], cmap=colormap)
     pl.colorbar()
 
+
+def get_bispectra_statistics(crosstype=['T353','E353','B353'], lmax=100, nsims=100, return_bs=False):
+
+    files = FGS_RESULTS_PATH + 'bispectra/sim{}' + '_b_{}_{}_{}_lmax{}'.format(crosstype[0],crosstype[1],crosstype[2],lmax)
+                   
+    bs = []
+    for i in np.arange(nsims):
+        try:
+            b = np.load(files.format(i+1))
+            bs.append(b.real)
+        except:
+            pass
+
+    bs = np.array(bs)
+    bmean = bs.mean(axis=0)
+    bstd = bs.std(axis=0)
+
+    if return_bs:
+        return bs, bmean, bstd
+    return bmean, bstd
