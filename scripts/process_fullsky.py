@@ -180,7 +180,7 @@ def simulate_cmb_alms(almfile=FGS_SIM_PATH+'cmb_alms/alm', nside=2048, lmax=4000
     np.savez(almfile, Tlm=Tlm, Elm=Elm, Blm=Blm)
     return Tlm, Elm, Blm
 
-def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/simalm.npy', nside=2048, lmax=3000,
+def simulate_cmb_map(almfile=FGS_SIM_PATH+'cmb_alms/alm.npy', nside=2048, lmax=3000,
                  frequency=100,smear=False,
                  beam=None, beamP=None,
                  save=False, filename=FGS_SIM_PATH+'testcmb.fits',
@@ -237,7 +237,7 @@ def simulate_observed_cmb(return_components=False,
                           save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
                             nside=2048, npix=None, lmax=3000,experiment='planck',
                             frequency=100, beam=None, beamP=None,smear=True,
-                            almfile=FGS_SIM_PATH+'cmb_sims/simalm.npz'):
+                            almfile=FGS_SIM_PATH+'cmb_sims/alm.npz'):
 
     if npix is None:
         npix = hp.nside2npix(nside)
@@ -264,14 +264,18 @@ def simulate_observed_cmb(return_components=False,
 def get_planck_mask(mask_percentage=60,
              mask_sources=True,
              apodization='0',
-             smask_name='HFI_Mask_PointSrc_2048_R2.00.fits'):
+             smask_name='HFI_Mask_PointSrc_2048_R2.00.fits',
+             mask_name=None):
 
-    field = MASK_FIELD[mask_percentage]
-    mask = hp.read_map(PLANCK_DATA_PATH + 'HFI_Mask_GalPlane-apo{}_2048_R2.00.fits'.format(apodization),
+    if mask_name is None:
+        field = MASK_FIELD[mask_percentage]
+        mask = hp.read_map(PLANCK_DATA_PATH + 'HFI_Mask_GalPlane-apo{}_2048_R2.00.fits'.format(apodization),
                        field=field)
-    if mask_sources:
-        smask = hp.read_map(PLANCK_DATA_PATH + smask_name)
-        mask *= smask
+        if mask_sources:
+            smask = hp.read_map(PLANCK_DATA_PATH + smask_name)
+            mask *= smask
+    else:
+        mask = hp.read_map(mask_name)
 
     return mask
         
