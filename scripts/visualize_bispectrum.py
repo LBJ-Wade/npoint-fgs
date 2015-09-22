@@ -71,14 +71,16 @@ def plot_slice_bispectrum(y, s=None, title='',
 
 def get_bispectra_statistics(crosstype=['T353','E353','B353'], lmax=100, nsims=100, return_bs=False):
 
-    files = FGS_RESULTS_PATH + 'bispectra/sim{}' + '_b_{}_{}_{}_lmax{}'.format(crosstype[0],crosstype[1],crosstype[2],lmax)
+    files = FGS_RESULTS_PATH + 'bispectra/sim{}' + '_b_{}_{}_{}_lmax{}.npy'.format(crosstype[0],crosstype[1],crosstype[2],lmax)
                    
     bs = []
     for i in np.arange(nsims):
+        #print files.format(i+1)
         try:
             b = np.load(files.format(i+1))
             bs.append(b.real)
         except:
+            print 'did not find files'.format(i+1) 
             pass
 
     bs = np.array(bs)
