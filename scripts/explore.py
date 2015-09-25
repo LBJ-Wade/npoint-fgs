@@ -596,10 +596,10 @@ def get_alms(maps=None,
                 return alms[1], alms[2]
             
 
-#import pywigxjpf as wig
-#lmax = 200
-#wig.wig_table_init(2*lmax,9)
-#wig.wig_temp_init(2*lmax)
+import pywigxjpf as wig
+lmax = 200
+wig.wig_table_init(2*lmax,9)
+wig.wig_temp_init(2*lmax)
 
 @jit
 def get_w3j(l1,l2,l3,m1,m2,m3):
