@@ -1,6 +1,7 @@
 import numpy as np
 import pylab as pl
 
+import logging
 import matplotlib
 if __name__=='__main__':
     matplotlib.use('Agg')
@@ -278,4 +279,75 @@ def get_planck_mask(mask_percentage=60,
         mask = hp.read_map(mask_name)
 
     return mask
-        
+
+
+def measure_planck_Dl(Imap=None, 
+               Qmap=None,Umap=None,
+               beam=None, beamP=None,
+              frequency=353,lmax=600,lmin=40,
+              mask=None, put_mask=True,
+              mask_percentage=60,
+              mask_sources=True,
+              apodization='0',
+              smask_name='HFI_Mask_PointSrc_2048_R2.00.fits',
+              mask_name=None,
+              temperature=False,
+              pol=False, cross=False,
+              beam_file = PLANCK_DATA_PATH + 'HFI_RIMO_Beams-100pc_R2.00.fits'):
+
+    """Returns D quantity = Cl *ls*(ls+1)/2./np.pi*1e12 [units: uK_CMB^2
+    """
+
+    if mask is None:
+        if put_mask:
+            mask = get_planck_mask(mask_percentage=mask_percentage,
+                                   mask_sources=mask_sources,
+                                   apodization=apodization,
+                                   smask_name=smask_name,
+                                   mask_name=mask_name)
+        else:
+            mask = map.copy()*0. + 1.
+
+    fsky = mask.sum() / len(mask)
+
+    if (beam is None) or (beamP is None) :
+        hdulist = fits.open(beam_file)
+        beam = hdulist[BEAM_INDEX['{}'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+        beamP = hdulist[BEAM_INDEX['{}P'.format(frequency)]].data.NOMINAL[0][:lmax+1]
+    beam = beam[lmin:lmax+1]
+    beamP = beamP[lmin:lmax+1]
+    
+ 
+    if temperature or cross:
+        if Imap is None:
+            mapname = PLANCK_DATA_PATH + 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+            Imap = hp.read_map(mapname,field=0)
+        Tlm = hp.map2alm(Imap*mask, lmax=lmax)
+    if pol or cross:
+        if (Qmap is None) or (Umap is None):
+            mapname = PLANCK_DATA_PATH + 'HFI_SkyMap_{}_2048_R2.02_full.fits'.format(frequency)
+            Qmap, Umap = hp.read_map(mapname,field=(1,2))
+        Elm, Blm = hp.map2alm_spin( (Qmap*mask,Umap*mask), 2, lmax=lmax )
+
+    ls = np.arange(lmin, lmax+1)
+
+    covII, covIQ, covIU, covQQ, covQU, covUU = hp.read_map( mapname,field=(4,5,6,7,8,9) )
+    npix = len(covII)
+    clTT_noise = covII.sum() * (4.*np.pi) / npix**2 *ls/ls
+    clPP_noise = covQQ.sum() * (4.*np.pi) / npix**2 *ls/ls
+    
+
+    factor =  ls * (ls+1) / (2.*np.pi) * 1e12 / fsky**2 
+    if temperature:
+        TT = hp.alm2cl(Tlm)
+        return ls, (TT[lmin:]-clTT_noise) * factor / beam**2
+    if pol:
+        EE = hp.alm2cl(Elm)
+        BB = hp.alm2cl(Blm)
+        return ls, EE[lmin:], clPP_noise
+        return ls, (EE[lmin:]-clPP_noise) * factor / beamP**2, (BB[lmin:]-clPP_noise) * factor / beamP**2
+    if cross:
+        TE = hp.alm2cl(Tlm, Elm)
+        EB = hp.alm2cl(Blm, Elm)
+        return ls, TE[lmin:] * factor / beam / beamP , (EB[lmin:]-clPP_noise) * factor / beamP**2 
+  
