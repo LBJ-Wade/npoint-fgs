@@ -14,7 +14,7 @@ nside=2048
 lmax = 2000
 lmax_bis = 100
 
-mask = get_planck_mask(mask_percentage=60,
+mask = get_planck_mask(psky=60,
                 mask_sources=True,
                 apodization='0',
                 smask_name='HFI_Mask_PointSrc_2048_R2.00.fits')
