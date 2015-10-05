@@ -26,7 +26,6 @@ parser.add_argument('--odd', action='store_true')
 parser.add_argument('--alm1',default='alm.npy')
 parser.add_argument('--alm2',default=None)
 parser.add_argument('--alm3',default=None)
-parser.add_argument('--hfile',default='hs_lmax100.npy')
 parser.add_argument('--filename',default='bispectrumtest.npy')
 
 args = parser.parse_args()
@@ -49,7 +48,7 @@ else:
 #assert len(alm1)==len(alm2) and len(alm1)==len(alm3) and len(alm1)==LMAX+1, 'problem: alm size(s) and lmax mismatch.'
     
 # fetch w3j's for ms=(0,0,0)s
-hs = get_hs(args.hfile, lmax=LMAX)
+hs = get_hs(lmax=LMAX)
 
 
 def split(container, count):
@@ -80,13 +79,14 @@ bispectrum = np.zeros((LMAX+1,LMAX+1,LMAX+1), dtype=complex)
 
 for i in ns:
     print('on rank {}: i={}'.format(COMM.rank, i))
-    inner_loops(i, args.lmax, args.lmin, bispectrum, alm1, alm2, alm3, even_parity=even_parity)
+    inner_loops(i, args.lmax, args.lmin, bispectrum, alm1, alm2, alm3, hs=hs)
 
 # Gather results on rank 0.
 bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
+    bispectrum[hs!=0.] = bispectrum[hs!=0.] / hs[hs!=0.]
     np.save(filename,bispectrum)
 
 

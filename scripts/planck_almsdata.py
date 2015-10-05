@@ -6,11 +6,11 @@ import healpy as hp
 
 frequencies = [100,143,353,217]
 
-lmax_bis = 200
+lmax_bis = 20
 
-mask = get_planck_mask(psky=60,
+mask = get_planck_mask(psky=70,
                 mask_sources=True,
-                apodization='0',
+                apodization=2,
                 smask_name='HFI_Mask_PointSrc_2048_R2.00.fits')
 
 for f in frequencies:

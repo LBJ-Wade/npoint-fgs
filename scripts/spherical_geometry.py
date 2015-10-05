@@ -58,15 +58,17 @@ def w3j000(L, l, lp, Fks):
     
     return res
 
-def get_hs(filename, Fks_filename='Fks_1000.txt', lmax=100):
+def get_hs(filename=None, Fks_filename='Fks_1000.txt', lmax=100, save=False):
 
-    if os.path.exists(filename):
-        hs = np.load(filename, 'r')
-        return hs
+    if filename is not None:
+        if os.path.exists(filename):
+            hs = np.load(filename, 'r')
+            return hs
 
     Fks = np.loadtxt(Fks_filename)
-    hs = calc_hs(Fks, lmin=lmin, lmax=lmax)
-    np.save(filename, hs)
+    hs = calc_hs(Fks, lmax=lmax)
+    if filename is not None and save:
+        np.save(filename, hs)
     return hs
 
 @jit
