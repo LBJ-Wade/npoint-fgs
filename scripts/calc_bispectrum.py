@@ -12,7 +12,7 @@ from numba import jit
 
 from spherical_geometry import get_hs
 from process_fullsky import FGS_SIM_PATH, FGS_RESULTS_PATH, PLANCK_DATA_PATH
-from test import inner_loops
+from utils import inner_loops
 
 alms_sims_path = PLANCK_DATA_PATH + 'bispectrum_alms/'
 
