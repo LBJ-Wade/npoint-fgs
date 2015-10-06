@@ -9,14 +9,16 @@ frequencies = [353]#[100,143,353,217]
 filebase = sys.argv[1]
 
 smear = True
-save = False
+mask_sources = True
 nside=2048
+psky = 70
+apodization = 2
 lmax = 2000
-lmax_bispectrum = 20
+lmax_bispectrum = 200
 
-mask = get_planck_mask(psky=70,
-                mask_sources=True,
-                apodization=2,
+mask = get_planck_mask(psky=psky,
+                mask_sources=mask_sources,
+                apodization=apodization,
                 smask_name='HFI_Mask_PointSrc_2048_R2.00.fits')
 
 
@@ -41,7 +43,7 @@ alms_fg = np.array([Tlm_fg,Elm_fg,Blm_fg])
 for f in frequencies:
 
     outfilename = PLANCK_DATA_PATH + 'bispectrum_alms/' + '{}_planck_{}GHz_lmax{}'.format(filebase,f,
-                                                                                             lmax_bispectrum)
+                                                                                          lmax_bispectrum)
     I,Q,U = simulate_observed_map(alms_cmb=alms_cmb, alms_fg=alms_fg,
                                   frequency=f,
                                   smear=smear, experiment='planck',
@@ -53,6 +55,6 @@ for f in frequencies:
                         healpy_format=False)
     print 'Calculated alms for {}, {} GHz'.format(filebase, f)
 
-    np.save(outfilename + '_Tlm', Tlm)
-    np.save(outfilename + '_Elm', Elm)
-    np.save(outfilename + '_Blm', Blm)
+    np.save(outfilename + '_Tlm.npy', Tlm)
+    np.save(outfilename + '_Elm.npy', Elm)
+    np.save(outfilename + '_Blm.npy', Blm)
