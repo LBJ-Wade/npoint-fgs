@@ -286,14 +286,14 @@ def check_cl_sims(nmaps=1,lmax=1000,nside=2048,
     clbb = hp.alm2cl(Blm) * factor
     clte = hp.alm2cl(Tlm, Elm) * factor
                                                   
-    cl = get_theory_cls()
+    cl = get_theory_cmb()
     ls_theory = cl[0][:lmax+1]
     factor_theory = ls_theory * ( ls_theory + 1. ) / (2.*np.pi)
     
     cltt_theory = cl[1][:lmax+1] * factor_theory
-    clte_theory = cl[2][:lmax+1] * factor_theory
-    clee_theory = cl[3][:lmax+1] * factor_theory
-    clbb_theory = cl[4][:lmax+1] * factor_theory
+    clee_theory = cl[2][:lmax+1] * factor_theory
+    clbb_theory = cl[3][:lmax+1] * factor_theory
+    clte_theory = cl[4][:lmax+1] * factor_theory
 
     plt.figure()
     plt.plot(ls, cltt, label='sims')

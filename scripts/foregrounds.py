@@ -391,9 +391,9 @@ def measure_dlcl(mode='dl',frequency=353,
 
     return ls, TT, EE, BB, TE, TB, EB
 
-def fg_cl_thfit(f=353, lmax=1000, psky=70, apo=2):
+def get_theory_fg(f=353, lmax=1000, psky=70, apo=2):
 
-    dic = pickle.load( open( pf.FGS_RESULTS_PATH + 'fg_power_{}GHz_{}psky_apo{}.pkl'.format(f,psky,apo), 'rb' ) )
+    dic = pickle.load( open( pf.PLANCK_DATA_PATH + 'derived/fg_power_{}GHz_{}psky_apo{}.pkl'.format(f,psky,apo), 'rb' ) )
 
     pTT = dic['TT']
     pEE = dic['EE']
@@ -439,12 +439,11 @@ def calibrate_fsky(mode, nsim=1,
     beamP = beamP[:lmax+1]
 
     if mode == 'fg':
-        ls, cls_theory = fg_cl_thfit(f=f, lmax=lmax, psky=psky, apo=apo)
+        ls, cls_theory = get_theory_fg(f=f, lmax=lmax, psky=psky, apo=apo)
     if mode == 'cmb':
-        ls, cltt, clte, clee, clbb = pf.get_theory_cls(lmax=lmax, mode='cl')
+        ls, cls_theor = pf.get_theory_cmb(lmax=lmax, mode='cl')
         factor = ls*(1+ls)
-        cls_theory = (cltt, clee, clbb, clte)
-  
+        
     for i in np.arange(nsim):
         print 'sim #{}...'.format(i+1)
         I, Q, U = pf.simulate_cmb_map(nside=nside, lmax=lmax,
@@ -487,3 +486,4 @@ def calibrate_fsky(mode, nsim=1,
     fsky_correction[fsky_correction==np.inf] = 0.
 
     return ls, fsky_correction, TTm, EEm, BBm, cls_theory
+

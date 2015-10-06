@@ -85,7 +85,7 @@ def make2d_alm_square(alm, lmax, ls, ms):
 
 
 def calc_alm(Imap, Qmap, Umap, mask=None,
-               lmax=100,
+               lmax=200,
                add_beam=None,div_beam=None,
                add_beamP=None,div_beamP=None,
                healpy_format=False):
@@ -150,8 +150,7 @@ def calc_cholesky_IQU(covII, covIQ, covIU, covQQ, covQU, covUU, npix):
     return L
          
         
-def simulate_noise(npix=50331648, frequency=100, experiment='planck',
-                      save=True, filename=FGS_SIM_PATH+'noisemap.fits'):
+def simulate_noise(npix=50331648, frequency=100, experiment='planck'):
 
     I = np.random.standard_normal(npix)
     Q = np.random.standard_normal(npix)
@@ -159,8 +158,6 @@ def simulate_noise(npix=50331648, frequency=100, experiment='planck',
     if experiment=='planck' or experiment=='Planck' or experiment=='PLANCK':
         L = np.load(PLANCK_DATA_PATH + 'HFI_SkyMap_{}_2048_R2.02_full_cholesky.npy'.format(frequency), 'r')
     I, Q, U = L_dot_rand_map(L,I,Q,U,npix)
-    if save:
-        hp.write_map(filename,[I,Q,U])
     return I, Q, U
 
 @jit(nopython=True)
@@ -174,44 +171,22 @@ def L_dot_rand_map(L,rand_I,rand_Q,rand_U,npix):
         Umap[i] = L[i][2,0] * rand_I[i] + L[i][2,1] * rand_Q[i] + L[i][2,2] * rand_U[i]
     return Imap, Qmap, Umap
 
-def simulate_cmb_alms(almfile=FGS_SIM_PATH+'cmb_alms/alm', nside=2048, lmax=4000,
-                      savealms=True,
-                      cls_theory=None,
-                      cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
+def simulate_alms(cls_theory, 
+                  nside=2048, lmax=4000):
     """cls_theory must contain this order: (cltt, clee, clbb, clte)
     """
-
-    if cls_theory is None:
-        ls, cltt, clte, clee, clbb = get_theory_cls(lmax=lmax, cl_file=cl_file)
-        cls_theory = (cltt, clee, clbb, clte)
-
     Tlm, Elm, Blm = hp.synalm( cls_theory, new=True, lmax=lmax)
-    if savealms:
-        np.savez(almfile, Tlm=Tlm, Elm=Elm, Blm=Blm)
     return Tlm, Elm, Blm
 
-def simulate_cmb_map(almfile=None, nside=2048, lmax=3000,
-                    frequency=100,smear=False, cls_theory=None,
-                    beam=None, beamP=None,
-                    save=False, filename=FGS_SIM_PATH+'testcmb.fits',
-                    beam_file=PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits'):
+def simulate_map(alms,
+                 nside=2048, lmax=2000,
+                 frequency=100,smear=False,
+                 beam=None, beamP=None,
+                 beam_file=PLANCK_DATA_PATH+'HFI_RIMO_Beams-100pc_R2.00.fits'):
 
-    if almfile is not None:
-        if os.path.exists(almfile):
-            d = np.load(almfile)
-            Tlm = d['Tlm']
-            Elm =  d['Elm']
-            Blm =  d['Blm']
-        else:
-            Tlm, Elm, Blm = simulate_cmb_alms(nside=nside, lmax=lmax,
-                                          savealms=False,
-                                          cls_theory=cls_theory)
-    else:
-        print 'no alm file, simulating...'
-        Tlm, Elm, Blm = simulate_cmb_alms(nside=nside, lmax=lmax,
-                                          savealms=False,
-                                          cls_theory=cls_theory)
-        
+    Tlm = alms[0]
+    Elm = alms[1]
+    Blm = alms[2]
     if smear:
         if (beam is None) or (beamP is None) :
             hdulist = fits.open(beam_file)
@@ -223,12 +198,9 @@ def simulate_cmb_map(almfile=None, nside=2048, lmax=3000,
 
     Tmap = hp.alm2map( Tlm, nside, verbose=False )
     Qmap, Umap = hp.alm2map_spin( (Elm, Blm), nside, 2, lmax=lmax)
-
-    if save:
-        hp.write_map([Tmap,Qmap,Umap], filename)
     return Tmap, Qmap, Umap
 
-def get_theory_cls(lmax=3000,
+def get_theory_cmb(lmax=3000,
                    mode='cl',
                    cl_file=PLANCK_DATA_PATH+'bf_base_cmbonly_plikHMv18_TT_lowTEB_lmax4000.minimum.theory_cl'):
     """ Read theory cls, remove factor of l*(l+1)/2pi,
@@ -254,34 +226,34 @@ def get_theory_cls(lmax=3000,
     clee = np.concatenate((np.array([0,0]),clee))
     clbb = np.concatenate((np.array([0,0]),clbb))
 
-    return ls, cltt, clte, clee, clbb
+    return ls, (cltt, clee, clbb, clte)
 
 
-def simulate_observed_cmb(return_components=False,
-                          save=False, filename=FGS_SIM_PATH+'cmbsky.fits',
-                            nside=2048, npix=None, lmax=3000,experiment='planck',
-                            frequency=100, beam=None, beamP=None,smear=True,
-                            almfile=FGS_SIM_PATH+'cmb_sims/alm.npz'):
+def simulate_observed_map(alms_cmb, alms_fg=None,
+                          nside=2048, npix=None, lmax=2000,
+                          experiment='planck',frequency=100,
+                          beam=None, beamP=None,smear=True):
+    """if alms_fg is not None, it adds foregrounds, scaled from 353GHz to the given frequency.
+    """
 
     if npix is None:
         npix = hp.nside2npix(nside)
     if nside is None:
         nside = hp.npix2nside(npix)
+
+    if alms_fg is not None:
+        alms = alms_cmb + alms_fg * FG_SCALING[frequency]
+    else:
+        alms = alms_cmb
         
-    Tcmb, Qcmb, Ucmb = simulate_cmb_map(nside=nside, lmax=lmax,
-                                frequency=frequency,smear=smear,save=False,
-                                beam=beam, beamP=beamP,
-                                almfile=almfile)
+    T, Q, U = simulate_map(alms, nside=nside, lmax=lmax,
+                                frequency=frequency,smear=smear,
+                                beam=beam, beamP=beamP)
     Tnoise, Qnoise, Unoise = simulate_noise(npix=npix,experiment=experiment,
-                                            frequency=frequency,
-                                            save=False)
+                                            frequency=frequency)
 
-    if save:
-        hp.write_map(filename, [Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise])
 
-    if return_components:
-        return Tcmb,Tnoise, Qcmb,Qnoise, Ucmb,Unoise
-    return Tcmb+Tnoise, Qcmb+Qnoise, Ucmb+Unoise
+    return T + Tnoise, Q + Qnoise, U + Unoise
 
 
 

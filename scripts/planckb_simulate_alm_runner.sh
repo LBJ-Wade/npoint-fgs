@@ -6,4 +6,4 @@
 #$ -o runs/
 #$ -e runs/
 
-python planck_almsims.py sim$SGE_TASK_ID
+python planckb_simulate_alm.py sim$SGE_TASK_ID

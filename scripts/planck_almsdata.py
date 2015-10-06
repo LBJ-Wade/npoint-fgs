@@ -6,7 +6,7 @@ import healpy as hp
 
 frequencies = [100,143,353,217]
 
-lmax_bis = 20
+lmax_bis = 200
 
 mask = get_planck_mask(psky=70,
                 mask_sources=True,

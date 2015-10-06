@@ -11,18 +11,16 @@ import argparse
 from numba import jit
 
 from spherical_geometry import get_hs
-from process_fullsky import FGS_SIM_PATH, FGS_RESULTS_PATH
+from process_fullsky import FGS_SIM_PATH, FGS_RESULTS_PATH, PLANCK_DATA_PATH
 from test import inner_loops
 
-alms_sims_path = FGS_SIM_PATH + 'planck_bispectrum_alms/'
+alms_sims_path = PLANCK_DATA_PATH + 'bispectrum_alms/'
 
 # Use default communicator. No need to complicate things.
 COMM = MPI.COMM_WORLD
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lmax',default=200, type=int)
-parser.add_argument('--lmin',default=0, type=int)
-parser.add_argument('--odd', action='store_true')
 parser.add_argument('--alm1',default='alm.npy')
 parser.add_argument('--alm2',default=None)
 parser.add_argument('--alm3',default=None)
@@ -30,7 +28,6 @@ parser.add_argument('--filename',default='bispectrumtest.npy')
 
 args = parser.parse_args()
 LMAX = args.lmax
-even_parity = not args.odd
 
 filename = FGS_RESULTS_PATH + 'bispectra/' + args.filename
 
@@ -79,15 +76,16 @@ bispectrum = np.zeros((LMAX+1,LMAX+1,LMAX+1), dtype=complex)
 
 for i in ns:
     print('on rank {}: i={}'.format(COMM.rank, i))
-    inner_loops(i, args.lmax, args.lmin, bispectrum, alm1, alm2, alm3, hs=hs)
+    inner_loops(i, args.lmax, bispectrum, alm1, alm2, alm3, hs=hs)
 
 # Gather results on rank 0.
 bispectrum = COMM.gather(bispectrum, root=0)
 
 if COMM.rank == 0:
     bispectrum = np.array(bispectrum).sum(axis=0)
-    bispectrum[hs!=0.] = bispectrum[hs!=0.] / hs[hs!=0.]
-    np.save(filename,bispectrum)
+    nonzero = ~np.isclose(hs,0.)
+    bispectrum[nonzero] = bispectrum[nonzero] / hs[nonzero]
+    np.save(filename,bispectrum.real)
 
 
 

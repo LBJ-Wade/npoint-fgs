@@ -6,4 +6,4 @@
 #$ -o runs/
 #$ -e runs/
 
-python simulate_alms.py sim$SGE_TASK_ID
+python simulate_alm.py sim$SGE_TASK_ID
