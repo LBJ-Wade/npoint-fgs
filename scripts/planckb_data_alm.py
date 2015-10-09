@@ -12,7 +12,7 @@ nside=2048
 psky = 70
 apodization = 2
 
-lmax_bispectrum = 200
+lmax_bispectrum = 199
 
 
 mask = get_planck_mask(psky=psky,
